@@ -13,20 +13,29 @@ namespace VideoToFrames
             //string videoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 11.00-12.00.mp4";
             var startDate = new DateTime(2016, 4, 20, 12, 0, 1);
 
-            string resultsDirectory, framesDirectory, unsureDirectory;
-            GetOutputDirectories(videoFilename, out framesDirectory, out resultsDirectory, out unsureDirectory);
+            string resultsDirectory, framesDirectory, unsureDirectory, logfile;
+            GetOutputDirectories(videoFilename, out framesDirectory, out resultsDirectory, out unsureDirectory, out logfile);
 
-            //Extract(tool, videoFilename, framesDirectory, startDate);
-            IdentifyVehicles(tool, framesDirectory, resultsDirectory, unsureDirectory);
+            try
+            {
+                //Extract(tool, videoFilename, framesDirectory, startDate);
+                IdentifyVehicles(tool, framesDirectory, resultsDirectory, unsureDirectory);
+            }
+            finally
+            {
+                Logger.CreateLogFile(logfile);
+            }
         }
 
-        private static void GetOutputDirectories(string videoFilename, out string framesDirectory, out string resultsDirectory, out string unsureDirectory)
+        private static void GetOutputDirectories(string videoFilename, out string framesDirectory, out string resultsDirectory, out string unsureDirectory, out string logfile)
         {
             string outputDirectory = Path.Combine(Path.GetDirectoryName(videoFilename), Path.GetFileNameWithoutExtension(videoFilename));
             
             framesDirectory = Path.Combine(outputDirectory, "Frames");
-            resultsDirectory = Path.Combine(outputDirectory, @"Results\OK");
-            unsureDirectory = Path.Combine(outputDirectory, @"Results\Unsure");
+            var resultsBaseDirectory = Path.Combine(outputDirectory, "Results");
+            resultsDirectory = Path.Combine(resultsBaseDirectory, "OK");
+            unsureDirectory = Path.Combine(resultsBaseDirectory, "Unsure");
+            logfile = Path.Combine(resultsBaseDirectory, "results.log");
 
             if (!Directory.Exists(framesDirectory))
                 Directory.CreateDirectory(framesDirectory);
