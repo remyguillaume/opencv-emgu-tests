@@ -148,7 +148,7 @@ namespace VideoToFrames
                 {
                     var cell = difference[i, j];
                     if (cell.Blue + cell.Green + cell.Red > BigChangeVal)
-                        count++;
+                        count+=PerformanceImprovmentFactor;
                 }
             }
 
