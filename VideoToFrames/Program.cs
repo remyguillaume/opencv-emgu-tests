@@ -9,16 +9,17 @@ namespace VideoToFrames
         private static void Main(string[] args)
         {
             var tool = new VideoToFrames();
-            string videoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 12.00-13.00.mp4";
+            //string videoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 12.00-13.00.mp4";
             //string videoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 11.00-12.00.mp4";
-            var startDate = new DateTime(2016, 4, 20, 12, 0, 1);
+            string videoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 17.00-18.00.mp4";
+            var startDate = new DateTime(2016, 4, 20, 17, 0, 1);
 
             string resultsDirectory, framesDirectory, unsureDirectory, logfile;
             GetOutputDirectories(videoFilename, out framesDirectory, out resultsDirectory, out unsureDirectory, out logfile);
 
             try
             {
-                //Extract(tool, videoFilename, framesDirectory, startDate);
+                Extract(tool, videoFilename, framesDirectory, startDate);
                 IdentifyVehicles(tool, framesDirectory, resultsDirectory, unsureDirectory);
             }
             finally
