@@ -13,9 +13,6 @@ namespace VideoToFrames
 {
     public class VideoToFrames
     {
-        private const int BigChangeVal = 600; // Default value : 600
-        private const int PerformanceImprovmentFactor = 2; // NOTE : 1 is no improvment at all
-
         public void Extract(string sourceVideoFileName, DateTime startDate, string outputDirectory)
         {
             var reader = new VideoFileReader();
@@ -23,11 +20,10 @@ namespace VideoToFrames
 
             try
             {
-                // We do not need to export every frame.
+                // We do not need to export every frame, this is too much
                 // reader.FrameRate gives the nmber of frames per second
                 // reader.FrameCount is the total number of frames in the video.
-                // We will export 4 frames / second, this should be enough
-                int frameInterval = reader.FrameRate/4;
+                int frameInterval = reader.FrameRate / Consts.NbFramesPerSecondToExport;
                 var pad = reader.FrameCount.ToString(CultureInfo.InvariantCulture).Length;
                 for (int i = 0; i < reader.FrameCount; ++i)
                 {
@@ -89,7 +85,7 @@ namespace VideoToFrames
                 Logger.WriteLine(String.Format("{0} : [{1}]", currentFile.Name, nbChanges));
                 previousFrame = frame;
 
-                if (!identificationInProgress && nbChanges > 50)
+                if (!identificationInProgress && nbChanges > Consts.MinChangeValueToDetectVehicle)
                 {
                     // Big change
                     // Something is happening here
@@ -97,7 +93,7 @@ namespace VideoToFrames
                 }
                 if (identificationInProgress)
                 {
-                    if (nbChanges < 10)
+                    if (nbChanges < Consts.MaxChangeValueToDetectEndOfVehicle)
                     {
                         // end of identification
                         if (nbSuccessiveChanges >= 5)
@@ -107,7 +103,7 @@ namespace VideoToFrames
                             string destFileName = Path.Combine(resultsDirectory, filename);
                             File.Copy(maxFile.FullName, destFileName);
                         }
-                        else if (nbSuccessiveChanges >= 3)
+                        else if (nbSuccessiveChanges >= 2)
                         {
                             // Not sure here
                             string filename = String.Format("{0} ({1}-{2}){3}", Path.GetFileNameWithoutExtension(maxFile.Name), nbSuccessiveChanges, maxValue, Path.GetExtension(maxFile.Name));
@@ -142,13 +138,13 @@ namespace VideoToFrames
         {
             // Try just 1 pixel of 4 to increase performance
             int count = 0;
-            for (int i = 0; i < difference.Height; i+=PerformanceImprovmentFactor)
+            for (int i = 0; i < difference.Height; i += Consts.PerformanceImprovmentFactor)
             {
-                for (int j = 0; j < difference.Width; j += PerformanceImprovmentFactor)
+                for (int j = 0; j < difference.Width; j += Consts.PerformanceImprovmentFactor)
                 {
                     var cell = difference[i, j];
-                    if (cell.Blue + cell.Green + cell.Red > BigChangeVal)
-                        count+=PerformanceImprovmentFactor*PerformanceImprovmentFactor;
+                    if (cell.Blue + cell.Green + cell.Red > Consts.BigChangeVal)
+                        count += Consts.PerformanceImprovmentFactor * Consts.PerformanceImprovmentFactor;
                 }
             }
 

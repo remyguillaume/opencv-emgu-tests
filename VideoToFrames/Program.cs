@@ -9,8 +9,6 @@ namespace VideoToFrames
         private static void Main(string[] args)
         {
             var tool = new VideoToFrames();
-            //string videoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 12.00-13.00.mp4";
-            //string videoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 11.00-12.00.mp4";
             string videoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 17.00-18.00.mp4";
             var startDate = new DateTime(2016, 4, 20, 17, 0, 1);
 
@@ -32,8 +30,8 @@ namespace VideoToFrames
         {
             string outputDirectory = Path.Combine(Path.GetDirectoryName(videoFilename), Path.GetFileNameWithoutExtension(videoFilename));
             
-            framesDirectory = Path.Combine(outputDirectory, "Frames");
-            var resultsBaseDirectory = Path.Combine(outputDirectory, "Results");
+            framesDirectory = Path.Combine(outputDirectory, String.Format("Frames ({0})", Consts.NbFramesPerSecondToExport));
+            var resultsBaseDirectory = Path.Combine(outputDirectory, String.Format("Results ({0}-{1}-{2}-{3})", Consts.BigChangeVal, Consts.MaxChangeValueToDetectEndOfVehicle, Consts.MinChangeValueToDetectVehicle, Consts.PerformanceImprovmentFactor));
             resultsDirectory = Path.Combine(resultsBaseDirectory, "OK");
             unsureDirectory = Path.Combine(resultsBaseDirectory, "Unsure");
             logfile = Path.Combine(resultsBaseDirectory, "results.log");
