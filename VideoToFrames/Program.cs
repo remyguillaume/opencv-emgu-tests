@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 
@@ -18,9 +19,10 @@ namespace VideoToFrames
 
             try
             {
+                Rectangle videoSize = tool.GetVideoSize(videoFilename);
                 Extract(tool, videoFilename, framesDirectory, startDate);
                 //IdentifyVehiclesVersion1(tool, framesDirectory, resultsDirectory, unsureDirectory);
-                IdentifyVehiclesVersion2(tool, framesDirectory, absDiffDirectory, resultsDirectory, unsureDirectory);
+                IdentifyVehiclesVersion2(tool, framesDirectory, absDiffDirectory, resultsDirectory, unsureDirectory, videoSize);
             }
             finally
             {
@@ -59,11 +61,20 @@ namespace VideoToFrames
             Logger.WriteLine("Identification executed in " + stopwatch.Elapsed.ToString("c"));
         }
 
-        private static void IdentifyVehiclesVersion2(VideoToFrames tool, string framesDirectory, string absDiffDirectory, string resultsDirectory, string unsureDirectory)
+        private static void IdentifyVehiclesVersion2(VideoToFrames tool, string framesDirectory, string absDiffDirectory, string resultsDirectory, string unsureDirectory, Rectangle videoSize)
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            int nbResults = tool.FindBlobs(framesDirectory, absDiffDirectory, resultsDirectory, unsureDirectory);
+
+            // If there are perturbations (other route which should not be detected)
+            // We will analyse only the right area
+            int minX = (Consts.LimitLeft > 0) ? Consts.LimitLeft : 0;
+            int minY = (Consts.LimitTop > 0) ? Consts.LimitTop : 0;
+            int maxX = (Consts.LimitRight > 0) ? Consts.LimitRight : videoSize.Right;
+            int maxY = (Consts.LimitBottom > 0) ? Consts.LimitBottom : videoSize.Bottom;
+
+            var analyseArea = new Rectangle(minX, minY, maxX - minX, maxY - minY);
+            int nbResults = tool.FindBlobs(framesDirectory, absDiffDirectory, resultsDirectory, unsureDirectory, analyseArea);
             stopwatch.Stop();
             Logger.WriteLine();
             Logger.WriteLine("Identification executed in " + stopwatch.Elapsed.ToString("c"));

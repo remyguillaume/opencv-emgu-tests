@@ -14,6 +14,22 @@ namespace VideoToFrames
 {
     public class VideoToFrames
     {
+        public Rectangle GetVideoSize(string sourceVideoFileName)
+        {
+            var reader = new VideoFileReader();
+            reader.Open(sourceVideoFileName);
+
+            try
+            {
+                Bitmap bitmap = reader.ReadVideoFrame();
+                return new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            }
+            finally
+            {
+                reader.Close();
+            }
+        }
+
         /// <summary>
         /// Extracts frames from video
         /// </summary>
@@ -167,7 +183,7 @@ namespace VideoToFrames
             return count;
         }
 
-        public int FindBlobs(string framesDirectory, string absDiffDirectory, string resultsDirectory, string unsureDirectory)
+        public int FindBlobs(string framesDirectory, string absDiffDirectory, string resultsDirectory, string unsureDirectory, Rectangle analyseArea)
         {
             List<FileInfo> files = new DirectoryInfo(framesDirectory).GetFiles("*.jpg").OrderBy(f => f.FullName).ToList();
             var previousFrame = new Image<Bgr, byte>(files[0].FullName);
@@ -175,6 +191,7 @@ namespace VideoToFrames
             Image<Bgr, byte> maxFrame = null;
             FileInfo maxFile = null;
             int resultCount = 0;
+            int successiveFound = 0;
             for (int index = 1; index < files.Count; index++)
             {
                 FileInfo currentFile = files[index];
@@ -183,7 +200,7 @@ namespace VideoToFrames
 
                 // Go through every 10 pixels, and test if there is a big change.
                 // Remember the coordinates if a change is found
-                List<Point> changesCoordinates = IdentifyBigChangesCoordinates(difference);
+                List<Point> changesCoordinates = IdentifyBigChangesCoordinates(difference, analyseArea);
                 Logger.Write(currentFile.Name);
                 Logger.Write(" [ChangeCoords:"+changesCoordinates.Count.ToString("0000")+"]");
 
@@ -202,17 +219,14 @@ namespace VideoToFrames
                     // For each coordiante, we try to build the blog of changes
                     int minX, minY, maxX, maxY;
                     GetMinAndMaxXyValuesVersion2(coordinate, difference, out minX, out minY, out maxX, out maxY);
-                    if (maxX - minX > Consts.MaxGridDistanceForObjectIdentification && maxY - minY > Consts.MaxGridDistanceForObjectIdentification)
-                    {
-                        // The blog is big enough.
-                        // We found something here
-                        var rectangle = new Rectangle(minX, minY, maxX - minX, maxY - minY);
-                        rectangles.Add(rectangle);
+                    var rectangle = new Rectangle(minX, minY, maxX - minX, maxY - minY);
+                    rectangles.Add(rectangle);
 
-                        UpdateXyLimits(minX, minY, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
-                        UpdateXyLimits(maxX, maxY, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
-                    }
+                    UpdateXyLimits(minX, minY, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
+                    UpdateXyLimits(maxX, maxY, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
                 }
+
+                bool found = false;
                 if (rectangles.Count > 0)
                 {
                     Logger.Write(" [Rectangles:" + rectangles.Count.ToString("0000") + "]");
@@ -222,37 +236,56 @@ namespace VideoToFrames
                     Logger.Write(" [Simplified Rectangles:" + rectangles.Count.ToString("0000") + "]");
                     foreach (var rectangle in rectangles)
                     {
-                        frame.Draw(rectangle, new Bgr(Color.Red), 2);
-                        int area = rectangle.Width * rectangle.Height;
-                        if (area > maxArea)
+                        Logger.Write(String.Format(" [Size:{0}/{1}]", rectangle.Width.ToString("000"), rectangle.Height.ToString("000")));
+                        if (rectangle.Width > Consts.MaxGridDistanceForObjectIdentification || rectangle.Height > Consts.MaxGridDistanceForObjectIdentification)
                         {
-                            maxArea = area;
-                            maxFrame = frame;
-                            maxFile = currentFile;
+                            // The blog is big enough.
+                            // We found something here
+                            Logger.Write(" *");
+                            found = true;
+                            frame.Draw(rectangle, new Bgr(Color.Red), 2);
+                            int area = rectangle.Width*rectangle.Height;
+                            if (area > maxArea)
+                            {
+                                maxArea = area;
+                                maxFrame = frame;
+                                maxFile = currentFile;
+                            }
                         }
                     }
 
                     // Second : save frame as image
-                    string destFileName = Path.Combine(unsureDirectory, currentFile.Name);
-                    frame.Save(destFileName);
+                    if (found)
+                    {
+                        string destFileName = Path.Combine(unsureDirectory, currentFile.Name);
+                        frame.Save(destFileName);
+                    }
+                }
+
+                if (found)
+                {
+                    // Something was found
+                    // If the are not minimum 2 consecituve frames with whanges, we consider it as "no-change" at all
+                    successiveFound++;
                 }
                 else
                 {
                     // No change found in this frame.
-                    // It means we sswitch vehicle.
+                    // It means we switch vehicle.
                     // We can save maxFrame as a definitive result
-                    if (maxFrame != null)
+                    if (successiveFound > 1 && maxFrame != null)
                     {
                         Logger.WriteLine();
                         Logger.Write("==> MAXFILE:" + maxFile.Name);
                         string destFileName = Path.Combine(resultsDirectory, maxFile.Name);
                         maxFrame.Save(destFileName);
                         resultCount++;
-
-                        maxArea = 0;
-                        maxFrame = null;
-                        maxFile = null;
                     }
+
+                    maxArea = 0;
+                    maxFrame = null;
+                    maxFile = null;
+                    successiveFound = 0;
                 }
 
                 Logger.WriteLine();
@@ -276,7 +309,8 @@ namespace VideoToFrames
                 for (int j = 0; j < simplifiedRectangles.Count; ++j)
                 {
                     var r2 = rectangles[j];
-                    if (r1.IntersectsWith(r2))
+                    var bufferedR2 = new Rectangle(r2.Left - Consts.RectangleUnionBuffer, r2.Top - Consts.RectangleUnionBuffer, r2.Width + Consts.RectangleUnionBuffer*2, r2.Height + Consts.RectangleUnionBuffer*2);
+                    if (r1.IntersectsWith(bufferedR2))
                     {
                         int minX = r2.Left;
                         int minY = r2.Top;
@@ -454,12 +488,12 @@ namespace VideoToFrames
             }
         }
 
-        private static List<Point> IdentifyBigChangesCoordinates(Image<Bgr, byte> difference)
+        private static List<Point> IdentifyBigChangesCoordinates(Image<Bgr, byte> difference, Rectangle analyseArea)
         {
             var changesCoordinates = new List<Point>();
-            for (int i = 0; i < difference.Height; i += Consts.GridPatternFactor)
+            for (int i = analyseArea.Top; i < analyseArea.Bottom; i += Consts.GridPatternFactor)
             {
-                for (int j = 0; j < difference.Width; j += Consts.GridPatternFactor)
+                for (int j = analyseArea.Left; j < analyseArea.Right; j += Consts.GridPatternFactor)
                 {
                     var cell = difference[i, j];
                     if (cell.Blue + cell.Green + cell.Red > Consts.BigChangeVal)
