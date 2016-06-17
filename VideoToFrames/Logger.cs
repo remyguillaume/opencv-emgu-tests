@@ -35,5 +35,10 @@ namespace VideoToFrames
                 writer.Write(_log.ToString());
             }
         }
+
+        public static void Reset()
+        {
+            _log = new StringBuilder();
+        }
     }
 }
