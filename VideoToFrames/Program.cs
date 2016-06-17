@@ -21,22 +21,26 @@ namespace VideoToFrames
                     LimitBottom = 420,
                     ChangeVal = 150
                 },
-                new Video
+                */
+                /*new Video
                 {
                     VideoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 6.00-7.00.mp4",
                     StartDate = new DateTime(2016, 4, 20, 6, 0, 1),
                     LimitLeft = 360,
                     LimitTop = 80,
-                    LimitBottom = 420
-                },                
-                new Video
+                    LimitBottom = 420,
+                    ChangeVal = 350,
+                },*/
+               /* new Video
                 {
                     VideoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 11.00-12.00.mp4",
                     StartDate = new DateTime(2016, 4, 20, 11, 0, 1),
                     LimitLeft = 360,
                     LimitTop = 80,
-                    LimitBottom = 420
-                },    */            
+                    LimitBottom = 420,
+                    ChangeVal = 250,
+                    //CompareMode = CompareMode.FirstFrame
+                }, */            
                 new Video
                 {
                     VideoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 12.00-13.00.mp4",
@@ -45,8 +49,7 @@ namespace VideoToFrames
                     LimitTop = 80,
                     LimitBottom = 420,
                     ChangeVal = 350,
-                    NbFramesPerSecondToExport = 4,
-                    MaxGridDistanceForObjectIdentification = 70
+                    MaxGridDistanceForObjectSwitching = 20
                 },
             });
 

@@ -6,7 +6,6 @@
         public const int MinChangeValueToDetectVehicle = 30;
         public const int MaxChangeValueToDetectEndOfVehicle = 10;
 
-        public const int GridPatternFactor = 10; // For blob identify, which pixels will be tested. Default : every 10 pixel
-        public const int RectangleUnionBuffer = 10;
+        public const int GridPatternFactor = 30; // For blob identify, which pixels will be tested. Default : every 10 pixel
     }
 }

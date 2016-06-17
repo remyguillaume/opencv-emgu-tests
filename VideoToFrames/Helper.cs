@@ -19,7 +19,7 @@ namespace VideoToFrames
             video.FramesDirectory = Path.Combine(outputDirectory, String.Format("Frames ({0})", video.NbFramesPerSecondToExport));
             video.AbsDiffDirectory = Path.Combine(outputDirectory, String.Format("AbsDiff ({0})", video.NbFramesPerSecondToExport));
             //string resultsBaseDirectory = Path.Combine(outputDirectory, String.Format("Results ({0}-{1}-{2}-{3})", Consts.BigChangeVal, Consts.MaxChangeValueToDetectEndOfVehicle, Consts.MinChangeValueToDetectVehicle, Consts.PerformanceImprovmentFactor));
-            string resultsBaseDirectory = Path.Combine(outputDirectory, String.Format("Results ({0}-{1}-{2}-{3}-{4})", video.NbFramesPerSecondToExport, video.ChangeVal, Consts.GridPatternFactor, video.MaxGridDistanceForObjectIdentification, Consts.RectangleUnionBuffer));
+            string resultsBaseDirectory = Path.Combine(outputDirectory, String.Format("Results ({0}-{1}-{2}-{3}-{4}-{5}-{6})", video.NbFramesPerSecondToExport, video.ChangeVal, Consts.GridPatternFactor, video.MinGridDistanceForObjectIdentification, video.MaxGridDistanceForObjectSwitching, video.RectangleUnionBuffer, video.ChangePercentageLimit));
             video.ResultsDirectory = Path.Combine(resultsBaseDirectory, "OK");
             video.AllDetectedFramesDirectory = Path.Combine(resultsBaseDirectory, "AllDetected");
             video.Logfile = Path.Combine(resultsBaseDirectory, "results.log");
@@ -88,22 +88,22 @@ namespace VideoToFrames
             return difference;
         }
 
-        public static void SimplifyRectangles(ref List<Rectangle> rectangles)
+        public static void SimplifyParts(ref List<VideoPart> videoParts, int rectangleUnionBuffer)
         {
-            if (rectangles.Count <= 0)
+            if (videoParts.Count <= 0)
                 throw new NotSupportedException();
 
-            var simplifiedRectangles = new List<Rectangle>();
-            simplifiedRectangles.Add(rectangles.First());
+            var simplifiedParts = new List<VideoPart>();
+            simplifiedParts.Add(videoParts.First());
 
-            for (int i = 1; i < rectangles.Count; i++)
+            for (int i = 1; i < videoParts.Count; i++)
             {
-                var r1 = rectangles[i];
+                var r1 = videoParts[i].Rectangle;
                 bool merged = false;
-                for (int j = 0; j < simplifiedRectangles.Count; ++j)
+                for (int j = 0; j < simplifiedParts.Count; ++j)
                 {
-                    var r2 = rectangles[j];
-                    var bufferedR2 = new Rectangle(r2.Left - Consts.RectangleUnionBuffer, r2.Top - Consts.RectangleUnionBuffer, r2.Width + Consts.RectangleUnionBuffer * 2, r2.Height + Consts.RectangleUnionBuffer * 2);
+                    var r2 = videoParts[j].Rectangle;
+                    var bufferedR2 = new Rectangle(r2.Left - rectangleUnionBuffer, r2.Top - rectangleUnionBuffer, r2.Width + rectangleUnionBuffer * 2, r2.Height + rectangleUnionBuffer * 2);
                     if (r1.IntersectsWith(bufferedR2))
                     {
                         int minX = r2.Left;
@@ -113,25 +113,28 @@ namespace VideoToFrames
                         UpdateXyLimits(r1.Left, r1.Top, ref minX, ref minY, ref maxX, ref maxY);
                         UpdateXyLimits(r1.Right, r1.Bottom, ref minX, ref minY, ref maxX, ref maxY);
 
-                        simplifiedRectangles[j] = new Rectangle(minX, minY, maxX - minX, maxY - minY);
+                        var r1Area = r1.Height*r1.Width;
+                        var r2Area = r2.Height*r2.Width;
+                        double averageChangePercentage = (r1Area*videoParts[i].ChangePercentage + r2Area*videoParts[j].ChangePercentage)/(r1Area+r2Area);
+                        simplifiedParts[j] = new VideoPart {Rectangle = new Rectangle(minX, minY, maxX - minX, maxY - minY), ChangePercentage = averageChangePercentage};
                         merged = true;
                     }
                 }
 
                 if (!merged)
                 {
-                    simplifiedRectangles.Add(r1);
+                    simplifiedParts.Add(videoParts[i]);
                 }
             }
 
-            if (rectangles.Count != simplifiedRectangles.Count)
+            if (videoParts.Count != simplifiedParts.Count)
             {
                 // A simplification was made.
                 // We try to resimplify the list
-                SimplifyRectangles(ref simplifiedRectangles);
+                SimplifyParts(ref simplifiedParts, rectangleUnionBuffer);
             }
 
-            rectangles = simplifiedRectangles;
+            videoParts = simplifiedParts;
         }
 
         public static void UpdateXyLimits(int x, int y, ref int minX, ref int minY, ref int maxX, ref int maxY)
@@ -146,7 +149,7 @@ namespace VideoToFrames
                 maxY = y;
         }
 
-        public static void GetMinAndMaxXyValues(Point coordinate, Image<Bgr, byte> difference, out int minX, out int minY, out int maxX, out int maxY, int changeVal)
+        public static void GetMinAndMaxXyValues(Point coordinate, Image<Bgr, byte> difference, int changeVal, out int minX, out int minY, out int maxX, out int maxY, out double changePersentage)
         {
             // We try to build the outline or the object
             // Method : Up, Right, Down, Left
@@ -154,6 +157,30 @@ namespace VideoToFrames
             minY = minX = int.MaxValue;
             maxX = maxY = 0;
             GetMinAndMaxXyValuesRecursive(difference, coordinate.X, coordinate.Y, ref minX, ref minY, ref maxX, ref maxY, alreadyTested, changeVal, 1);
+
+            // Calculate change percentage
+            changePersentage = GetChangePercentage(difference, minX, minY, maxX, maxY, changeVal);
+        }
+
+        private static double GetChangePercentage(Image<Bgr, byte> difference, int minX, int minY, int maxX, int maxY, int changeVal)
+        {
+            int totalCells = (maxX - minX)*(maxY - minY);
+
+            int totalChanges = 0;
+            for (int i = minY; i < maxY; i++)
+            {
+                for (int j = minX; j < maxX; j++)
+                {
+                    var cell = difference[i, j];
+                    if (cell.Blue + cell.Green + cell.Red > changeVal)
+                        totalChanges++;
+                }
+            }
+
+            if (totalCells == 0)
+                return 0;
+
+            return totalChanges*100.0/totalCells;
         }
 
         private static void GetMinAndMaxXyValuesRecursive(Image<Bgr, byte> frame, int x, int y, ref int minX, ref int minY, ref int maxX, ref int maxY, bool[,] alreadyTested, int changeVal, int callStackLevel)
