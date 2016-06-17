@@ -41,7 +41,7 @@ namespace VideoToFrames
                     ChangeVal = 250,
                     //CompareMode = CompareMode.FirstFrame
                 }, */            
-                new Video
+                /*new Video
                 {
                     VideoFilename = @"D:\Projects\VideoAnalyse\K23 Verkehrsüberwachung 20.04.2016 12.00-13.00.mp4",
                     StartDate = new DateTime(2016, 4, 20, 12, 0, 1),
@@ -50,7 +50,7 @@ namespace VideoToFrames
                     LimitBottom = 420,
                     ChangeVal = 350,
                     MaxGridDistanceForObjectSwitching = 20
-                },
+                },*/
             });
 
             foreach (Video video in videos)
