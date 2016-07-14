@@ -18,20 +18,23 @@ namespace VideoToFrames
 
             video.FramesDirectory = Path.Combine(outputDirectory, String.Format("Frames ({0})", video.NbFramesPerSecondToExport));
             video.AbsDiffDirectory = Path.Combine(outputDirectory, String.Format("AbsDiff ({0})", video.NbFramesPerSecondToExport));
-            //string resultsBaseDirectory = Path.Combine(outputDirectory, String.Format("Results ({0}-{1}-{2}-{3})", Consts.BigChangeVal, Consts.MaxChangeValueToDetectEndOfVehicle, Consts.MinChangeValueToDetectVehicle, Consts.PerformanceImprovmentFactor));
-            string resultsBaseDirectory = Path.Combine(outputDirectory, String.Format("Results ({0}-{1}-{2}-{3}-{4}-{5}-{6})", video.NbFramesPerSecondToExport, video.ChangeVal, Consts.GridPatternFactor, video.MinGridDistanceForObjectIdentification, video.MaxGridDistanceForObjectSwitching, video.RectangleUnionBuffer, video.ChangePercentageLimit));
+
+            string resultsBaseDirectory = Path.Combine(outputDirectory, String.Format("Results ({0}-{1}-{2}-{3}-{4}-{5}-{6}-{7})", video.NbFramesPerSecondToExport, (int)video.CompareMode, video.ChangeVal, Consts.GridPatternFactor, video.MinGridDistanceForObjectIdentification, video.MaxGridDistanceForObjectSwitching, video.RectangleUnionBuffer, video.ChangePercentageLimit));
             video.ResultsDirectory = Path.Combine(resultsBaseDirectory, "OK");
             video.AllDetectedFramesDirectory = Path.Combine(resultsBaseDirectory, "AllDetected");
             video.Logfile = Path.Combine(resultsBaseDirectory, "results.log");
 
             if (!Directory.Exists(video.FramesDirectory))
                 Directory.CreateDirectory(video.FramesDirectory);
-            if (!Directory.Exists(video.AbsDiffDirectory))
-                Directory.CreateDirectory(video.AbsDiffDirectory);
             if (!Directory.Exists(video.ResultsDirectory))
                 Directory.CreateDirectory(video.ResultsDirectory);
-            if (!Directory.Exists(video.AllDetectedFramesDirectory))
-                Directory.CreateDirectory(video.AllDetectedFramesDirectory);
+            if (video.IsDebugMode)
+            {
+                if (!Directory.Exists(video.AbsDiffDirectory))
+                    Directory.CreateDirectory(video.AbsDiffDirectory);
+                if (!Directory.Exists(video.AllDetectedFramesDirectory))
+                    Directory.CreateDirectory(video.AllDetectedFramesDirectory);
+            }
         }
 
         public static string GetOutputFilename(string outputDirectory, int i, double frameCount, int pad, DateTime startDate)
@@ -48,15 +51,15 @@ namespace VideoToFrames
             return outputFilename;
         }
 
-        public static Image<Bgr, byte> GetAbsDiff(Image<Bgr, byte> frame, Image<Bgr, byte> previousFrame, string outDirectory, FileInfo fileInfo, bool debugMode)
+        public static Image<Bgr, byte> GetAbsDiff(FrameInfos currentFrame, FrameInfos previousFrame, string outDirectory, bool debugMode)
         {
             // Calculate AbsDiff
-            Image<Bgr, byte> difference = frame.AbsDiff(previousFrame);
+            Image<Bgr, byte> difference = currentFrame.Frame.AbsDiff(previousFrame.Frame);
 
             if (debugMode)
             {
                 // Save AbsDiff
-                string destFileName = Path.Combine(outDirectory, fileInfo.Name);
+                string destFileName = Path.Combine(outDirectory, currentFrame.File.Name);
                 difference.Save(destFileName);
 
                 // Save AbsDiff as text values
@@ -76,7 +79,7 @@ namespace VideoToFrames
                     }
                     str.AppendLine();
                 }
-                var fileName = Path.GetFileNameWithoutExtension(fileInfo.Name) + ".txt";
+                var fileName = Path.GetFileNameWithoutExtension(currentFrame.File.Name) + ".txt";
                 destFileName = Path.Combine(outDirectory, fileName);
                 using (var sw = new StreamWriter(destFileName))
                 {
@@ -236,6 +239,41 @@ namespace VideoToFrames
             int maxY = (video.LimitBottom > 0) ? video.LimitBottom : video.VideoSize.Bottom;
 
             return new Rectangle(minX, minY, maxX - minX, maxY - minY);
+        }
+
+        public static List<VideoPart> GetDifferenceVideoParts(Video video, FrameInfos currentFrame, FrameInfos previousFrame)
+        {
+            var difference = GetAbsDiff(currentFrame, previousFrame, video.AbsDiffDirectory, video.IsDebugMode);
+
+            // Go through every 10 pixels, and test if there is a big change.
+            // Remember the coordinates if a change is found
+            List<Point> changesCoordinates = IdentifyBigChangesCoordinates(difference, video.AnalyseArea, video.ChangeVal);
+            Logger.Write(currentFrame.File.Name);
+            Logger.Write(" [ChangeCoords:" + changesCoordinates.Count.ToString("0000") + "]");
+
+            int minMinX, minMinY, maxMaxX, maxMaxY;
+            minMinY = minMinX = int.MaxValue;
+            maxMaxX = maxMaxY = 0;
+            var videoParts = new List<VideoPart>();
+            foreach (var coordinate in changesCoordinates)
+            {
+                if (minMinX < coordinate.X && coordinate.X < maxMaxX &&
+                    minMinY < coordinate.Y && coordinate.Y < maxMaxY)
+                {
+                    // This coordinate is already in a found blob
+                    continue;
+                }
+                // For each coordinate, we try to build the blob of changes
+                int minX, minY, maxX, maxY;
+                double changePersentage;
+                GetMinAndMaxXyValues(coordinate, difference, video.ChangeVal, out minX, out minY, out maxX, out maxY, out changePersentage);
+                var rectangle = new Rectangle(minX, minY, maxX - minX, maxY - minY);
+                videoParts.Add(new VideoPart { Rectangle = rectangle, ChangePercentage = changePersentage });
+
+                UpdateXyLimits(minX, minY, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
+                UpdateXyLimits(maxX, maxY, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
+            }
+            return videoParts;
         }
     }
 }

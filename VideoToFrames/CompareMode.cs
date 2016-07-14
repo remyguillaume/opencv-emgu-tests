@@ -2,7 +2,8 @@
 {
     public enum CompareMode
     {
-        FirstFrame,
-        SuccessiveFrames
+        FirstFrame = 1,
+        SuccessiveFrames = 2,
+        PreviousEmptyFrame = 3
     }
 }

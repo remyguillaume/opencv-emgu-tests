@@ -77,6 +77,8 @@ namespace VideoToFrames
             }
         }
 
+        #region First Simple Version
+
         //public void FindVehiclesSimpleVersion(string framesDirectory, string resultsDirectory, string unsureDirectory)
         //{
         //    FileInfo maxFile = null;
@@ -161,91 +163,40 @@ namespace VideoToFrames
         //    return count;
         //}
 
+        #endregion First Simple Version
 
         public int FindBlobs(Video video)
         {
             List<FileInfo> files = new DirectoryInfo(video.FramesDirectory).GetFiles("*.jpg").OrderBy(f => f.FullName).ToList();
-            var previousFrame = new Image<Bgr, byte>(files[0].FullName);
-            int maxArea = 0;
-            Image<Bgr, byte> maxFrame = null;
-            FileInfo maxFile = null;
+            var maxFrame = new FrameInfos();
+            var previousFrame = new FrameInfos {Number = 0, Frame = new Image<Bgr, byte>(files[0].FullName), File = files[0]};
+            var previousEmptyFrame = new FrameInfos { Number = 0, Frame = new Image<Bgr, byte>(files[0].FullName), File = files[0] };
             int resultCount = 0;
             int successiveFound = 0;
             bool previousFound = false;
             for (int index = 1; index < files.Count; index++)
             {
-                FileInfo currentFile = files[index];
-                var frame = new Image<Bgr, byte>(currentFile.FullName);
-                var difference = Helper.GetAbsDiff(frame, previousFrame, video.AbsDiffDirectory, currentFile, video.DebugMode);
+                var currentFrame = new FrameInfos { Number = index, Frame = new Image<Bgr, byte>(files[index].FullName), File = files[index] };
 
-                // Go through every 10 pixels, and test if there is a big change.
-                // Remember the coordinates if a change is found
-                List<Point> changesCoordinates = Helper.IdentifyBigChangesCoordinates(difference, video.AnalyseArea, video.ChangeVal);
-                Logger.Write(currentFile.Name);
-                Logger.Write(" [ChangeCoords:"+changesCoordinates.Count.ToString("0000")+"]");
-
-                int minMinX, minMinY, maxMaxX, maxMaxY;
-                minMinY = minMinX = int.MaxValue;
-                maxMaxX = maxMaxY = 0;
-                var videoParts = new List<VideoPart>();
-                foreach (var coordinate in changesCoordinates)
-                {
-                    if (minMinX < coordinate.X && coordinate.X < maxMaxX &&
-                        minMinY < coordinate.Y && coordinate.Y < maxMaxY)
-                    {
-                        // This coordinate is already in a found blob
-                        continue;
-                    }
-                    // For each coordiante, we try to build the blog of changes
-                    int minX, minY, maxX, maxY;
-                    double changePersentage;
-                    Helper.GetMinAndMaxXyValues(coordinate, difference, video.ChangeVal, out minX, out minY, out maxX, out maxY, out changePersentage);
-                    var rectangle = new Rectangle(minX, minY, maxX - minX, maxY - minY);
-                    videoParts.Add(new VideoPart {Rectangle = rectangle, ChangePercentage = changePersentage});
-
-                    Helper.UpdateXyLimits(minX, minY, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
-                    Helper.UpdateXyLimits(maxX, maxY, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
-                }
-
+                // Get differences
                 bool found = false;
+                var videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousFrame);
                 if (videoParts.Count > 0)
                 {
-                    Logger.Write(" [Rectangles:" + videoParts.Count.ToString("0000") + "]");
-                    // Something was found
-                    // First : draw rectangles
-                    Helper.SimplifyParts(ref videoParts, video.RectangleUnionBuffer);
-                    Logger.Write(" [Simplified Rectangles:" + videoParts.Count.ToString("0000") + "]");
-                    foreach (var videoPart in videoParts)
-                    {
-                        Logger.Write(String.Format(" [Size:{0}/{1}/{2}%]", videoPart.Rectangle.Width.ToString("000"), videoPart.Rectangle.Height.ToString("000"), videoPart.ChangePercentage.ToString("00")));
-                        
-                        bool isBigObject = (videoPart.Rectangle.Width > video.MinGridDistanceForBigObjects || videoPart.Rectangle.Height > video.MinGridDistanceForBigObjects);
-                        bool isObject = (videoPart.Rectangle.Width > video.MinGridDistanceForObjectIdentification || videoPart.Rectangle.Height > video.MinGridDistanceForObjectIdentification) && videoPart.ChangePercentage > video.ChangePercentageLimit;
-                        bool isStillAnObject = previousFound && (videoPart.Rectangle.Width > video.MaxGridDistanceForObjectSwitching || videoPart.Rectangle.Height > video.MaxGridDistanceForObjectSwitching) && videoPart.ChangePercentage > video.ChangePercentageLimit;
+                    found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
 
-                        bool detected = isBigObject || isObject || isStillAnObject;
-                        if (detected)
-                        {
-                            // The blog is big enough.
-                            // We found something here
-                            Logger.Write(" *");
-                            found = true;
-                            frame.Draw(videoPart.Rectangle, new Bgr(Color.Red), 2);
-                            int area = videoPart.Rectangle.Width * videoPart.Rectangle.Height;
-                            if (area > maxArea)
-                            {
-                                maxArea = area;
-                                maxFrame = frame;
-                                maxFile = currentFile;
-                            }
-                        }
-                    }
-
-                    // Second : save frame as image
-                    if (video.DebugMode && found)
+                    if (found && video.CompareMode == CompareMode.PreviousEmptyFrame)
                     {
-                        string destFileName = Path.Combine(video.AllDetectedFramesDirectory, currentFile.Name);
-                        frame.Save(destFileName);
+                        // We detect changes using previous and current frames
+                        // But in order to get the change areas, we use the previous empty frame
+                        Logger.WriteLine();
+                        Logger.WriteLine(String.Format("Comparing with PreviousEmptyFrame {0}", previousEmptyFrame.Number));
+                        videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousEmptyFrame);
+                        if (videoParts.Any())
+                            found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
+                        else
+                            found = false;
+                        Logger.Write("CompareMode.PreviousEmptyFrame : Done.");
                     }
                 }
 
@@ -260,29 +211,83 @@ namespace VideoToFrames
                     // No change found in this frame.
                     // It means we switch vehicle.
                     // We can save maxFrame as a definitive result
-                    if (successiveFound > 1 && maxFrame != null)
+                    if (successiveFound > 1 && maxFrame.Frame != null)
                     {
                         Logger.WriteLine();
-                        Logger.Write("==> MAXFILE:" + maxFile.Name);
-                        string destFileName = Path.Combine(video.ResultsDirectory, maxFile.Name);
-                        maxFrame.Save(destFileName);
+                        Logger.Write("==> MAXFILE:" + maxFrame.File.Name);
+                        string destFileName = Path.Combine(video.ResultsDirectory, maxFrame.File.Name);
+                        maxFrame.Frame.Save(destFileName);
                         resultCount++;
                     }
 
-                    maxArea = 0;
-                    maxFrame = null;
-                    maxFile = null;
+                    maxFrame = new FrameInfos();
                     successiveFound = 0;
+
+                    // If comparing with previous empty frame, we set the previous frame here
+                    if (video.CompareMode == CompareMode.PreviousEmptyFrame)
+                        previousEmptyFrame = currentFrame;
                 }
 
                 previousFound = found;
                 Logger.WriteLine();
 
-                if (video.CompareMode != CompareMode.FirstFrame)
-                    previousFrame = frame;
+                // If comparing successive frames, we set the previous frame here
+                if (video.CompareMode == CompareMode.SuccessiveFrames || video.CompareMode == CompareMode.PreviousEmptyFrame)
+                    previousFrame = currentFrame;
             }
 
             return resultCount;
+        }
+
+        private static bool GetMaxFrameInfos(Video video, List<VideoPart> videoParts, bool previousFound, FrameInfos currentFrame, FrameInfos max)
+        {
+            bool found = false;
+
+            Logger.Write(" [Rectangles:" + videoParts.Count.ToString("0000") + "]");
+            // Something was found
+            // First : draw rectangles
+            Helper.SimplifyParts(ref videoParts, video.RectangleUnionBuffer);
+            Logger.Write(" [Simplified Rectangles:" + videoParts.Count.ToString("0000") + "]");
+            Image<Bgr, byte> frameWithRectangles = null;
+            foreach (var videoPart in videoParts)
+            {
+                Logger.Write(String.Format(" [Size:{0}/{1}/{2}%]", videoPart.Rectangle.Width.ToString("000"), videoPart.Rectangle.Height.ToString("000"), videoPart.ChangePercentage.ToString("00")));
+
+                bool isBigObject = (videoPart.Rectangle.Width > video.MinGridDistanceForBigObjects || videoPart.Rectangle.Height > video.MinGridDistanceForBigObjects);
+                bool isObject = (videoPart.Rectangle.Width > video.MinGridDistanceForObjectIdentification || videoPart.Rectangle.Height > video.MinGridDistanceForObjectIdentification) && videoPart.ChangePercentage > video.ChangePercentageLimit;
+                bool isStillAnObject = previousFound && (videoPart.Rectangle.Width > video.MaxGridDistanceForObjectSwitching || videoPart.Rectangle.Height > video.MaxGridDistanceForObjectSwitching) && videoPart.ChangePercentage > video.ChangePercentageLimit;
+
+                bool detected = isBigObject || isObject || isStillAnObject;
+                if (detected)
+                {
+                    // The blog is big enough.
+                    // We found something here
+                    Logger.Write(" *");
+                    found = true;
+
+                    if (frameWithRectangles == null)
+                        frameWithRectangles = new Image<Bgr, byte>(currentFrame.Frame.ToBitmap());
+
+                    frameWithRectangles.Draw(videoPart.Rectangle, new Bgr(Color.Red), 2);
+                    int area = videoPart.Rectangle.Width*videoPart.Rectangle.Height;
+                    if (area > max.Area)
+                    {
+                        max.Number = currentFrame.Number;
+                        max.Area = area;
+                        max.Frame = frameWithRectangles;
+                        max.File = currentFrame.File;
+                    }
+                }
+            }
+
+            // Second : save frame as image
+            if (found && video.IsDebugMode)
+            {
+                string destFileName = Path.Combine(video.AllDetectedFramesDirectory, currentFrame.File.Name);
+                frameWithRectangles.Save(destFileName);
+            }
+
+            return found;
         }
     }
 }

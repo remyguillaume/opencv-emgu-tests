@@ -8,7 +8,7 @@ namespace VideoToFrames
         public Video()
         {
             LimitLeft = LimitRight = LimitTop = LimitBottom = -1;
-            DebugMode = false;
+            IsDebugMode = false;
             NbFramesPerSecondToExport = 4;
             MinGridDistanceForBigObjects = 150;
             MinGridDistanceForObjectIdentification = 70;
@@ -24,7 +24,7 @@ namespace VideoToFrames
         /// <summary>
         /// Id DebuMode is enabled, details analyse files will be generated (AbsDif pictures, Changes matrixes)
         /// </summary>
-        public bool DebugMode { get; set; }
+        public bool IsDebugMode { get; set; }
 
         /// <summary>
         /// Indicates the minimum Pixel Value necessary to consider a pixel as a change in the difference frame (AbsDiff)
@@ -83,5 +83,10 @@ namespace VideoToFrames
         public string Logfile { get; set; }
 
         public CompareMode CompareMode { get; set; }
+
+        public override string ToString()
+        {
+            return "[" + StartDate.ToString("yyyy-MM-dd hh:mm:ss") + "] " + VideoFilename;
+        }
     }
 }
