@@ -10,7 +10,7 @@ namespace VideoToFrames
     {
         private static void Main(string[] args)
         {
-            List<Video> videos = GetVideosList(@"J:\Videos_UR\", "Standard_SCU5N2_2016-04-20_0500.006.mp4");
+            List<Video> videos = GetVideosList(@"J:\Videos_UR\Aufnahmen vom 19. - 25.04.2016\");
             //List<Video> videos = GetVideosList(@"J:\Videos_UR\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-19_0500", "Standard_SCU5N2_2016-04-19_0500.011.mp4");
 
             foreach (Video video in videos)
@@ -21,9 +21,16 @@ namespace VideoToFrames
                 try
                 {
                     video.VideoSize = tool.GetVideoSize(video);
-                    Extract(tool, video);
-                    //IdentifyVehiclesVersion1(tool, framesDirectory, resultsDirectory, unsureDirectory);
-                    executed = IdentifyVehicles(tool, video);
+
+                    if (video.IsDebugMode)
+                    {
+                        Extract(tool, video);
+                        executed = IdentifyVehicles(tool, video);
+                    }
+                    else
+                    {
+                        executed = IdentifyVehiclesWithoutExtraction(tool, video);
+                    }
                 }
                 catch
                 {
@@ -72,12 +79,7 @@ namespace VideoToFrames
 
         private static CompareMode GetCompareMode(string file)
         {
-            var compareMode = CompareMode.SuccessiveFrames;
-
-            // Particular cases : To many false positive
-            if (file.Contains("Standard_SCU5N2_2016-04-20_0500.006"))
-                compareMode = CompareMode.PreviousEmptyFrame;
-
+            var compareMode = CompareMode.PreviousEmptyFrame;
             return compareMode;            
         }
 
@@ -85,9 +87,9 @@ namespace VideoToFrames
         {
             int changeVal = 250;
 
-            // Particular cases : To many false positive
-            if (file.Contains("Standard_SCU5N2_2016-04-19_0500.011"))
-                changeVal = 350;
+            //// Particular cases : To many false positive
+            //if (file.Contains("Standard_SCU5N2_2016-04-19_0500.011"))
+            //    changeVal = 350;
 
             return changeVal;
         }
@@ -112,18 +114,6 @@ namespace VideoToFrames
 
             return new DateTime(year, month, day, hour, minute, second);
         }
-
-        /*
-        private static void IdentifyVehiclesVersion1(VideoAnalyser tool, string framesDirectory, string resultsDirectory, string unsureDirectory)
-        {
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-            tool.FindVehiclesSimpleVersion(framesDirectory, resultsDirectory, unsureDirectory);
-            stopwatch.Stop();
-            Logger.WriteLine();
-            Logger.WriteLine("Identification executed in " + stopwatch.Elapsed.ToString("c"));
-        }
-        */
 
         private static void Extract(VideoAnalyser tool, Video video)
         {
@@ -161,6 +151,32 @@ namespace VideoToFrames
             video.AnalyseArea = Helper.GetAnalyseArea(video);
 
             int nbResults = tool.FindBlobs(video);
+            stopwatch.Stop();
+            Logger.WriteLine();
+            Logger.WriteLine("Identification executed in " + stopwatch.Elapsed.ToString("c"));
+            Logger.WriteLine("Number of vehicle found : " + nbResults);
+
+            return true;
+        }
+
+        private static bool IdentifyVehiclesWithoutExtraction(VideoAnalyser tool, Video video)
+        {
+            if (Directory.GetFiles(video.ResultsDirectory).Any())
+            {
+                // Analyse was already made for this configuration.
+                // Nothing to do
+                Logger.WriteLine("Skipping analyse (already executed for this configuration)");
+                return false;
+            }
+
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            // If there are perturbations (other route which should not be detected)
+            // We will analyse only the right area
+            video.AnalyseArea = Helper.GetAnalyseArea(video);
+
+            int nbResults = tool.FindBlobsWithoutExtraction(video);
             stopwatch.Stop();
             Logger.WriteLine();
             Logger.WriteLine("Identification executed in " + stopwatch.Elapsed.ToString("c"));

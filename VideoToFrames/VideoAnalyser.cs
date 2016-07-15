@@ -45,7 +45,7 @@ namespace VideoToFrames
             try
             {
                 // We do not need to export every frame, this is too much
-                // reader.FrameRate gives the nmber of frames per second
+                // reader.FrameRate gives the number of frames per second
                 // reader.FrameCount is the total number of frames in the video.
                 int frameInterval = reader.FrameRate / video.NbFramesPerSecondToExport;
                 var pad = reader.FrameCount.ToString(CultureInfo.InvariantCulture).Length;
@@ -76,95 +76,7 @@ namespace VideoToFrames
                 reader.Close();
             }
         }
-
-        #region First Simple Version
-
-        //public void FindVehiclesSimpleVersion(string framesDirectory, string resultsDirectory, string unsureDirectory)
-        //{
-        //    FileInfo maxFile = null;
-        //    int maxValue = 0;
-        //    int nbSuccessiveChanges = 0;
-        //    bool identificationInProgress = false;
-
-        //    List<FileInfo> files = new DirectoryInfo(framesDirectory).GetFiles("*.jpg").OrderBy(f => f.FullName).ToList();
-        //    var previousFrame = new Image<Bgr, byte>(files[0].FullName);
-        //    for (int i = 1; i < files.Count; i++)
-        //    {
-        //        FileInfo currentFile = files[i];
-        //        var frame = new Image<Bgr, byte>(currentFile.FullName);
-        //        var difference = frame.AbsDiff(previousFrame);
-        //        var nbChanges = GetNumberOfPixelWithBigChange(difference);
-        //        Logger.WriteLine(String.Format("{0} : [{1}]", currentFile.Name, nbChanges));
-        //        previousFrame = frame;
-
-        //        if (!identificationInProgress && nbChanges > Consts.MinChangeValueToDetectVehicle)
-        //        {
-        //            // Big change
-        //            // Something is happening here
-        //            identificationInProgress = true;
-        //        }
-        //        if (identificationInProgress)
-        //        {
-        //            if (nbChanges < Consts.MaxChangeValueToDetectEndOfVehicle)
-        //            {
-        //                // end of identification
-        //                if (nbSuccessiveChanges >= 5)
-        //                {
-        //                    // This is something, almost sure
-        //                    string filename = String.Format("{0} ({1}-{2}){3}", Path.GetFileNameWithoutExtension(maxFile.Name), nbSuccessiveChanges, maxValue, Path.GetExtension(maxFile.Name));
-        //                    string destFileName = Path.Combine(resultsDirectory, filename);
-        //                    File.Copy(maxFile.FullName, destFileName);
-        //                }
-        //                else if (nbSuccessiveChanges >= 2)
-        //                {
-        //                    // Not sure here
-        //                    string filename = String.Format("{0} ({1}-{2}){3}", Path.GetFileNameWithoutExtension(maxFile.Name), nbSuccessiveChanges, maxValue, Path.GetExtension(maxFile.Name));
-        //                    string destFileName = Path.Combine(unsureDirectory, filename);
-        //                    File.Copy(maxFile.FullName, destFileName);
-        //                }
-        //                else
-        //                {
-        //                    // 1 >= nbSuccessiveChanges >= 2
-        //                    // This is very probably nothing, but just some noise in the picture, or camera move
-        //                    // Nothing to do
-        //                }
-        //                identificationInProgress = false;
-        //                maxValue = 0;
-        //                maxFile = null;
-        //                nbSuccessiveChanges = 0;
-        //            }
-        //            else
-        //            {
-        //                nbSuccessiveChanges += 1;
-        //                if (nbChanges > maxValue)
-        //                {
-        //                    maxValue = nbChanges;
-        //                    maxFile = currentFile;
-        //                }
-        //            }
-        //        }
-        //    }
-        //}
-
-        //private int GetNumberOfPixelWithBigChange(Image<Bgr, byte> difference)
-        //{
-        //    // Try just 1 pixel of 4 to increase performance
-        //    int count = 0;
-        //    for (int i = 0; i < difference.Height; i += Consts.PerformanceImprovmentFactor)
-        //    {
-        //        for (int j = 0; j < difference.Width; j += Consts.PerformanceImprovmentFactor)
-        //        {
-        //            var cell = difference[i, j];
-        //            if (cell.Blue + cell.Green + cell.Red > Consts.BigChangeVal)
-        //                count += Consts.PerformanceImprovmentFactor * Consts.PerformanceImprovmentFactor;
-        //        }
-        //    }
-
-        //    return count;
-        //}
-
-        #endregion First Simple Version
-
+        
         public int FindBlobs(Video video)
         {
             List<FileInfo> files = new DirectoryInfo(video.FramesDirectory).GetFiles("*.jpg").OrderBy(f => f.FullName).ToList();
@@ -237,6 +149,114 @@ namespace VideoToFrames
             }
 
             return resultCount;
+        }
+
+        public int FindBlobsWithoutExtraction(Video video)
+        {
+            var reader = new VideoFileReader();
+            reader.Open(video.VideoFilename);
+
+            try
+            {
+                // We do not need to export every frame, this is too much
+                // reader.FrameRate gives the number of frames per second
+                // reader.FrameCount is the total number of frames in the video.
+                int frameInterval = reader.FrameRate/video.NbFramesPerSecondToExport;
+                var pad = reader.FrameCount.ToString(CultureInfo.InvariantCulture).Length;
+
+                // Read first frame
+                FrameInfos previousFrame;
+                FrameInfos previousEmptyFrame;
+                using (Bitmap bitmap = reader.ReadVideoFrame())
+                {
+                    string outputFilename = Helper.GetOutputFilename(video.FramesDirectory, 0, reader.FrameCount, pad, video.StartDate);
+                    previousFrame = new FrameInfos {Number = 0, Frame = new Image<Bgr, byte>(bitmap), File = new FileInfo(outputFilename)};
+                    previousEmptyFrame = new FrameInfos {Number = 0, Frame = new Image<Bgr, byte>(bitmap), File = new FileInfo(outputFilename)};
+                }
+                var maxFrame = new FrameInfos();
+                int resultCount = 0;
+                int successiveFound = 0;
+                bool previousFound = false;
+                for (int i = 1; i < reader.FrameCount; ++i)
+                {
+                    //Logger.Write(i + " ");
+                    FrameInfos currentFrame;
+                    using (Bitmap bitmap = reader.ReadVideoFrame())
+                    {
+                        if (i % 1000 == 0)
+                            Logger.WriteLine();
+                        if (i % frameInterval != 0)
+                            continue;
+
+                        string outputFilename = Helper.GetOutputFilename(video.FramesDirectory, i, reader.FrameCount, pad, video.StartDate);
+                        currentFrame = new FrameInfos { Number = i, Frame = new Image<Bgr, byte>(bitmap), File = new FileInfo(outputFilename) };
+                    }
+
+                    // Get differences
+                    bool found = false;
+                    var videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousFrame);
+                    if (videoParts.Count > 0)
+                    {
+                        found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
+
+                        if (found && video.CompareMode == CompareMode.PreviousEmptyFrame)
+                        {
+                            // We detect changes using previous and current frames
+                            // But in order to get the change areas, we use the previous empty frame
+                            Logger.WriteLine();
+                            Logger.WriteLine(String.Format("Comparing with PreviousEmptyFrame {0}", previousEmptyFrame.Number));
+                            videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousEmptyFrame);
+                            if (videoParts.Any())
+                                found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
+                            else
+                                found = false;
+                            Logger.Write("CompareMode.PreviousEmptyFrame : Done.");
+                        }
+                    }
+
+                    if (found)
+                    {
+                        // Something was found
+                        // If the are not minimum 2 consecituve frames with whanges, we consider it as "no-change" at all
+                        successiveFound++;
+                    }
+                    else
+                    {
+                        // No change found in this frame.
+                        // It means we switch vehicle.
+                        // We can save maxFrame as a definitive result
+                        if (successiveFound > 1 && maxFrame.Frame != null)
+                        {
+                            Logger.WriteLine();
+                            Logger.Write("==> MAXFILE:" + maxFrame.File.Name);
+                            string destFileName = Path.Combine(video.ResultsDirectory, maxFrame.File.Name);
+                            maxFrame.Frame.Save(destFileName);
+                            resultCount++;
+                        }
+
+                        maxFrame = new FrameInfos();
+                        successiveFound = 0;
+
+                        // If comparing with previous empty frame, we set the previous frame here
+                        if (video.CompareMode == CompareMode.PreviousEmptyFrame)
+                            previousEmptyFrame = currentFrame;
+                    }
+
+                    previousFound = found;
+                    Logger.WriteLine();
+
+                    // If comparing successive frames, we set the previous frame here
+                    if (video.CompareMode == CompareMode.SuccessiveFrames || video.CompareMode == CompareMode.PreviousEmptyFrame)
+                        previousFrame = currentFrame;
+                }
+
+                return resultCount;
+            }
+
+            finally
+            {
+                reader.Close();
+            }
         }
 
         private static bool GetMaxFrameInfos(Video video, List<VideoPart> videoParts, bool previousFound, FrameInfos currentFrame, FrameInfos max)

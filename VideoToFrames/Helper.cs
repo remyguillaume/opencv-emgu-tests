@@ -24,12 +24,12 @@ namespace VideoToFrames
             video.AllDetectedFramesDirectory = Path.Combine(resultsBaseDirectory, "AllDetected");
             video.Logfile = Path.Combine(resultsBaseDirectory, "results.log");
 
-            if (!Directory.Exists(video.FramesDirectory))
-                Directory.CreateDirectory(video.FramesDirectory);
             if (!Directory.Exists(video.ResultsDirectory))
                 Directory.CreateDirectory(video.ResultsDirectory);
             if (video.IsDebugMode)
             {
+                if (!Directory.Exists(video.FramesDirectory))
+                    Directory.CreateDirectory(video.FramesDirectory);
                 if (!Directory.Exists(video.AbsDiffDirectory))
                     Directory.CreateDirectory(video.AbsDiffDirectory);
                 if (!Directory.Exists(video.AllDetectedFramesDirectory))
