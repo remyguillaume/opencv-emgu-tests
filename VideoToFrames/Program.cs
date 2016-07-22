@@ -10,7 +10,7 @@ namespace VideoToFrames
     {
         private static void Main(string[] args)
         {
-            List<Video> videos = GetVideosList(@"J:\Videos_UR\Aufnahmen vom 19. - 25.04.2016\");
+            List<Video> videos = GetVideosList(@"J:\Videos_UR\");
             //List<Video> videos = GetVideosList(@"J:\Videos_UR\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-19_0500", "Standard_SCU5N2_2016-04-19_0500.011.mp4");
 
             foreach (Video video in videos)
