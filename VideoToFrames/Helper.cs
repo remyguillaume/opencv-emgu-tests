@@ -16,10 +16,10 @@ namespace VideoToFrames
         {
             string outputDirectory = Path.Combine(Path.GetDirectoryName(video.VideoFilename), Path.GetFileNameWithoutExtension(video.VideoFilename));
 
-            video.FramesDirectory = Path.Combine(outputDirectory, String.Format("Frames ({0})", video.NbFramesPerSecondToExport));
-            video.AbsDiffDirectory = Path.Combine(outputDirectory, String.Format("AbsDiff ({0})", video.NbFramesPerSecondToExport));
+            video.FramesDirectory = Path.Combine(outputDirectory, $"Frames ({video.NbFramesPerSecondToExport})");
+            video.AbsDiffDirectory = Path.Combine(outputDirectory, $"AbsDiff ({video.NbFramesPerSecondToExport})");
 
-            string resultsBaseDirectory = Path.Combine(outputDirectory, String.Format("Results ({0}-{1}-{2}-{3}-{4}-{5}-{6}-{7})", video.NbFramesPerSecondToExport, (int)video.CompareMode, video.ChangeVal, Consts.GridPatternFactor, video.MinGridDistanceForObjectIdentification, video.MaxGridDistanceForObjectSwitching, video.RectangleUnionBuffer, video.ChangePercentageLimit));
+            string resultsBaseDirectory = Path.Combine(outputDirectory, $"Results ({video.NbFramesPerSecondToExport}-{(int)video.CompareMode}-{video.ChangeVal.IdentificationChangeValue}-{video.ChangeVal.ShapeChangeValue}-{Consts.GridPatternFactor}-{video.MinGridDistanceForObjectIdentification}-{video.MaxGridDistanceForObjectSwitching}-{video.RectangleUnionBuffer}-{video.ChangePercentageLimit})");
             video.ResultsDirectory = Path.Combine(resultsBaseDirectory, "OK");
             video.AllDetectedFramesDirectory = Path.Combine(resultsBaseDirectory, "AllDetected");
             video.Logfile = Path.Combine(resultsBaseDirectory, "results.log");
@@ -109,17 +109,14 @@ namespace VideoToFrames
                     var bufferedR2 = new Rectangle(r2.Left - rectangleUnionBuffer, r2.Top - rectangleUnionBuffer, r2.Width + rectangleUnionBuffer * 2, r2.Height + rectangleUnionBuffer * 2);
                     if (r1.IntersectsWith(bufferedR2))
                     {
-                        int minX = r2.Left;
-                        int minY = r2.Top;
-                        int maxX = r2.Right;
-                        int maxY = r2.Bottom;
-                        UpdateXyLimits(r1.Left, r1.Top, ref minX, ref minY, ref maxX, ref maxY);
-                        UpdateXyLimits(r1.Right, r1.Bottom, ref minX, ref minY, ref maxX, ref maxY);
+                        Rectangle rectangleBlog;
+                        Polygon polygonlob;
+                        double changePercentage;
+                        BlobHelper.MergeBlobs(simplifiedParts[j].Polygon, videoParts[i].Polygon, out rectangleBlog, out polygonlob, out changePercentage);
+                        simplifiedParts[j].Rectangle = rectangleBlog;
+                        simplifiedParts[j].Polygon = polygonlob;
+                        simplifiedParts[j].ChangePercentage = changePercentage;
 
-                        var r1Area = r1.Height*r1.Width;
-                        var r2Area = r2.Height*r2.Width;
-                        double averageChangePercentage = (r1Area*videoParts[i].ChangePercentage + r2Area*videoParts[j].ChangePercentage)/(r1Area+r2Area);
-                        simplifiedParts[j] = new VideoPart {Rectangle = new Rectangle(minX, minY, maxX - minX, maxY - minY), ChangePercentage = averageChangePercentage};
                         merged = true;
                     }
                 }
@@ -152,68 +149,7 @@ namespace VideoToFrames
                 maxY = y;
         }
 
-        public static void GetMinAndMaxXyValues(Point coordinate, Image<Bgr, byte> difference, int changeVal, out int minX, out int minY, out int maxX, out int maxY, out double changePersentage)
-        {
-            // We try to build the outline or the object
-            // Method : Up, Right, Down, Left
-            var alreadyTested = new bool[difference.Height, difference.Width];
-            minY = minX = int.MaxValue;
-            maxX = maxY = 0;
-            GetMinAndMaxXyValuesRecursive(difference, coordinate.X, coordinate.Y, ref minX, ref minY, ref maxX, ref maxY, alreadyTested, changeVal, 1);
-
-            // Calculate change percentage
-            changePersentage = GetChangePercentage(difference, minX, minY, maxX, maxY, changeVal);
-        }
-
-        private static double GetChangePercentage(Image<Bgr, byte> difference, int minX, int minY, int maxX, int maxY, int changeVal)
-        {
-            int totalCells = (maxX - minX)*(maxY - minY);
-
-            int totalChanges = 0;
-            for (int i = minY; i < maxY; i++)
-            {
-                for (int j = minX; j < maxX; j++)
-                {
-                    var cell = difference[i, j];
-                    if (cell.Blue + cell.Green + cell.Red > changeVal)
-                        totalChanges++;
-                }
-            }
-
-            if (totalCells == 0)
-                return 0;
-
-            return totalChanges*100.0/totalCells;
-        }
-
-        private static void GetMinAndMaxXyValuesRecursive(Image<Bgr, byte> frame, int x, int y, ref int minX, ref int minY, ref int maxX, ref int maxY, bool[,] alreadyTested, int changeVal, int callStackLevel)
-        {
-            if (callStackLevel > Math.Max(frame.Width, frame.Height))
-                return; // Prevents StackOverflow, because this cell will probably be reached by some other way
-
-            if (x < 0 || y < 0 || x >= frame.Width || y >= frame.Height)
-                return;
-
-            if (!alreadyTested[y, x])
-            {
-                var cell = frame[y, x];
-                alreadyTested[y, x] = true;
-                double cellValue = cell.Blue + cell.Green + cell.Red;
-                if (cellValue > changeVal)
-                {
-                    // Ok, this cell can be included in the blob
-                    UpdateXyLimits(x, y, ref minX, ref minY, ref maxX, ref maxY);
-
-                    // If this cell is still in the blob, search recursively for linked cells.
-                    GetMinAndMaxXyValuesRecursive(frame, x, y - 1, ref minX, ref minY, ref maxX, ref maxY, alreadyTested, changeVal, callStackLevel + 1);
-                    GetMinAndMaxXyValuesRecursive(frame, x + 1, y, ref minX, ref minY, ref maxX, ref maxY, alreadyTested, changeVal, callStackLevel + 1);
-                    GetMinAndMaxXyValuesRecursive(frame, x, y + 1, ref minX, ref minY, ref maxX, ref maxY, alreadyTested, changeVal, callStackLevel + 1);
-                    GetMinAndMaxXyValuesRecursive(frame, x - 1, y, ref minX, ref minY, ref maxX, ref maxY, alreadyTested, changeVal, callStackLevel + 1);
-                }
-            }
-        }
-
-        public static List<Point> IdentifyBigChangesCoordinates(Image<Bgr, byte> difference, Rectangle analyseArea, int changeVal)
+        public static List<Point> IdentifyBigChangesCoordinates(Image<Bgr, byte> difference, Rectangle analyseArea, ChangeDetection changeVal)
         {
             var changesCoordinates = new List<Point>();
             for (int i = analyseArea.Top; i < analyseArea.Bottom; i += Consts.GridPatternFactor)
@@ -221,7 +157,7 @@ namespace VideoToFrames
                 for (int j = analyseArea.Left; j < analyseArea.Right; j += Consts.GridPatternFactor)
                 {
                     var cell = difference[i, j];
-                    if (cell.Blue + cell.Green + cell.Red > changeVal)
+                    if (cell.Blue + cell.Green + cell.Red > changeVal.IdentificationChangeValue)
                     {
                         // Change found
                         changesCoordinates.Add(new Point(j, i));
@@ -264,14 +200,17 @@ namespace VideoToFrames
                     continue;
                 }
                 // For each coordinate, we try to build the blob of changes
-                int minX, minY, maxX, maxY;
-                double changePersentage;
-                GetMinAndMaxXyValues(coordinate, difference, video.ChangeVal, out minX, out minY, out maxX, out maxY, out changePersentage);
-                var rectangle = new Rectangle(minX, minY, maxX - minX, maxY - minY);
-                videoParts.Add(new VideoPart { Rectangle = rectangle, ChangePercentage = changePersentage });
+                Rectangle rectangleBlob;
+                Polygon polygonBlob;
+                double changePercentage;
+                BlobHelper.GetBlob(coordinate, difference, video.ChangeVal, out rectangleBlob, out polygonBlob, out changePercentage);
+                var newVideoPart = new VideoPart {Rectangle = rectangleBlob, ChangePercentage = changePercentage};
+                newVideoPart.Polygon = polygonBlob;
+                videoParts.Add(newVideoPart);
 
-                UpdateXyLimits(minX, minY, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
-                UpdateXyLimits(maxX, maxY, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
+
+                UpdateXyLimits(rectangleBlob.X, rectangleBlob.Y, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
+                UpdateXyLimits(rectangleBlob.X + rectangleBlob.Width, rectangleBlob.Y + rectangleBlob.Height, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
             }
             return videoParts;
         }

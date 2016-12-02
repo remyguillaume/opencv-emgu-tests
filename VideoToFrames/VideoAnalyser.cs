@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using AForge.Video.FFMPEG;
 using Emgu.CV;
+using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 
 namespace VideoToFrames
@@ -97,7 +98,7 @@ namespace VideoToFrames
                 {
                     found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
 
-                    if (found && video.CompareMode == CompareMode.PreviousEmptyFrame)
+                    if (found && video.CompareMode == CompareMode.SuccessiveFrames)
                     {
                         // We detect changes using previous and current frames
                         // But in order to get the change areas, we use the previous empty frame
@@ -127,7 +128,12 @@ namespace VideoToFrames
                     {
                         Logger.WriteLine();
                         Logger.Write("==> MAXFILE:" + maxFrame.File.Name);
-                        string destFileName = Path.Combine(video.ResultsDirectory, maxFrame.File.Name);
+                        // TODO GRY : Remove this
+                        var path = Path.Combine(video.ResultsDirectory, ((int)maxFrame.ChangePercentage).ToString());
+                        if (!Directory.Exists(path))
+                            Directory.CreateDirectory(path);
+                        // END TODO GRY
+                        string destFileName = Path.Combine(path/*video.ResultsDirectory*/, maxFrame.File.Name);
                         maxFrame.Frame.Save(destFileName);
                         resultCount++;
                     }
@@ -179,7 +185,6 @@ namespace VideoToFrames
                 bool previousFound = false;
                 for (int i = 1; i < reader.FrameCount; ++i)
                 {
-                    //Logger.Write(i + " ");
                     FrameInfos currentFrame;
                     using (Bitmap bitmap = reader.ReadVideoFrame())
                     {
@@ -194,30 +199,36 @@ namespace VideoToFrames
 
                     // Get differences
                     bool found = false;
-                    var videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousFrame);
-                    if (videoParts.Count > 0)
+                    List<VideoPart> videoParts;
+                    switch (video.CompareMode)
                     {
-                        found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
-
-                        if (found && video.CompareMode == CompareMode.PreviousEmptyFrame)
-                        {
-                            // We detect changes using previous and current frames
-                            // But in order to get the change areas, we use the previous empty frame
-                            Logger.WriteLine();
-                            Logger.WriteLine(String.Format("Comparing with PreviousEmptyFrame {0}", previousEmptyFrame.Number));
+                        case CompareMode.SuccessiveFrames:
+                            videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousFrame);
+                            if (videoParts.Count > 0)
+                            {
+                                // We detect changes using previous and current frames
+                                // But in order to get the change areas, we use the previous empty frame
+                                Logger.WriteLine();
+                                Logger.WriteLine(String.Format("Comparing with PreviousEmptyFrame {0}", previousEmptyFrame.Number));
+                                videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousEmptyFrame);
+                                if (videoParts.Count > 0)
+                                    found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
+                                Logger.Write(" Done.");
+                            }
+                            break;
+                        case CompareMode.PreviousEmptyFrame:
                             videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousEmptyFrame);
-                            if (videoParts.Any())
+                            if (videoParts.Count > 0)
                                 found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
-                            else
-                                found = false;
-                            Logger.Write("CompareMode.PreviousEmptyFrame : Done.");
-                        }
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
                     }
-
+                    
                     if (found)
                     {
                         // Something was found
-                        // If the are not minimum 2 consecituve frames with whanges, we consider it as "no-change" at all
+                        // If the are not minimum 2 consecutive frames with whanges, we consider it as "no-change" at all
                         successiveFound++;
                     }
                     else
@@ -229,7 +240,19 @@ namespace VideoToFrames
                         {
                             Logger.WriteLine();
                             Logger.Write("==> MAXFILE:" + maxFrame.File.Name);
-                            string destFileName = Path.Combine(video.ResultsDirectory, maxFrame.File.Name);
+                            string destFileName;
+                            if (video.ExportInPercentageFolders)
+                            {
+                                var path = Path.Combine(video.ResultsDirectory, ((int) maxFrame.ChangePercentage).ToString());
+                                if (!Directory.Exists(path))
+                                    Directory.CreateDirectory(path);
+                                destFileName = Path.Combine(path, maxFrame.File.Name);
+                            }
+                            else
+                            {
+                                destFileName = Path.Combine(video.ResultsDirectory, maxFrame.File.Name);
+                            }
+
                             maxFrame.Frame.Save(destFileName);
                             resultCount++;
                         }
@@ -237,17 +260,15 @@ namespace VideoToFrames
                         maxFrame = new FrameInfos();
                         successiveFound = 0;
 
-                        // If comparing with previous empty frame, we set the previous frame here
-                        if (video.CompareMode == CompareMode.PreviousEmptyFrame)
-                            previousEmptyFrame = currentFrame;
+                        // We set the previous empty frame here
+                        previousEmptyFrame = currentFrame;
                     }
 
                     previousFound = found;
                     Logger.WriteLine();
 
-                    // If comparing successive frames, we set the previous frame here
-                    if (video.CompareMode == CompareMode.SuccessiveFrames || video.CompareMode == CompareMode.PreviousEmptyFrame)
-                        previousFrame = currentFrame;
+                    // We set the previous frame here
+                    previousFrame = currentFrame;
                 }
 
                 return resultCount;
@@ -273,22 +294,19 @@ namespace VideoToFrames
             {
                 Logger.Write(String.Format(" [Size:{0}/{1}/{2}%]", videoPart.Rectangle.Width.ToString("000"), videoPart.Rectangle.Height.ToString("000"), videoPart.ChangePercentage.ToString("00")));
 
-                bool isBigObject = (videoPart.Rectangle.Width > video.MinGridDistanceForBigObjects || videoPart.Rectangle.Height > video.MinGridDistanceForBigObjects);
-                bool isObject = (videoPart.Rectangle.Width > video.MinGridDistanceForObjectIdentification || videoPart.Rectangle.Height > video.MinGridDistanceForObjectIdentification) && videoPart.ChangePercentage > video.ChangePercentageLimit;
-                bool isStillAnObject = previousFound && (videoPart.Rectangle.Width > video.MaxGridDistanceForObjectSwitching || videoPart.Rectangle.Height > video.MaxGridDistanceForObjectSwitching) && videoPart.ChangePercentage > video.ChangePercentageLimit;
-
-                bool detected = isBigObject || isObject || isStillAnObject;
-                if (detected)
+                if (IsDetected(video, previousFound, videoPart))
                 {
-                    // The blog is big enough.
+                    // The blob is big enough.
                     // We found something here
-                    Logger.Write(" *");
+                    Logger.Write("*");
                     found = true;
 
                     if (frameWithRectangles == null)
                         frameWithRectangles = new Image<Bgr, byte>(currentFrame.Frame.ToBitmap());
 
                     frameWithRectangles.Draw(videoPart.Rectangle, new Bgr(Color.Red), 2);
+                    frameWithRectangles.DrawPolyline(videoPart.Polygon.ToArray(), true, new Bgr(Color.LimeGreen), 2, LineType.AntiAlias);
+
                     int area = videoPart.Rectangle.Width*videoPart.Rectangle.Height;
                     if (area > max.Area)
                     {
@@ -296,6 +314,7 @@ namespace VideoToFrames
                         max.Area = area;
                         max.Frame = frameWithRectangles;
                         max.File = currentFrame.File;
+                        max.ChangePercentage = videoPart.ChangePercentage;
                     }
                 }
             }
@@ -308,6 +327,24 @@ namespace VideoToFrames
             }
 
             return found;
+        }
+
+        private static bool IsDetected(Video video, bool previousFound, VideoPart videoPart)
+        {
+            bool widthIdentify = videoPart.Rectangle.Width > video.MinGridDistanceForObjectIdentification && videoPart.Rectangle.Height > video.MinGridDistanceForObjectIdentification/2;
+            bool heightIdentify = videoPart.Rectangle.Height > video.MinGridDistanceForObjectIdentification && videoPart.Rectangle.Width > video.MinGridDistanceForObjectIdentification/2;
+            bool widthSwitch = videoPart.Rectangle.Width > video.MaxGridDistanceForObjectSwitching;
+            bool heightSwitch = videoPart.Rectangle.Height > video.MaxGridDistanceForObjectSwitching;
+            bool widthBig = videoPart.Rectangle.Width > video.MinGridDistanceForBigObjects;
+            bool heightBig = videoPart.Rectangle.Height > video.MinGridDistanceForBigObjects;
+            bool isChange = videoPart.ChangePercentage > video.ChangePercentageLimit;
+
+            bool isBigObject = widthBig || heightBig;
+            bool isObject = (widthIdentify || heightIdentify) && isChange;
+            bool isStillAnObject = previousFound && (widthSwitch || heightSwitch) && isChange;
+
+            bool detected = /*isBigObject || */isObject || isStillAnObject;
+            return detected;
         }
     }
 }

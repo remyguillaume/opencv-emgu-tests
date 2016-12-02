@@ -10,7 +10,9 @@ namespace VideoToFrames
     {
         private static void Main(string[] args)
         {
-            List<Video> videos = GetVideosList(@"J:\Videos_UR\");
+            // Example with 12 velo
+            List<Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Velo", "Standard_SCU5N2_2016-04-20_0500.011.mp4");
+            //List <Video> videos = GetVideosList(@"J:\Videos_UR\");
             //List<Video> videos = GetVideosList(@"J:\Videos_UR\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-19_0500", "Standard_SCU5N2_2016-04-19_0500.011.mp4");
 
             foreach (Video video in videos)
@@ -59,12 +61,14 @@ namespace VideoToFrames
                     {
                         VideoFilename = file,
                         StartDate = startDateTime,
+                        NbFramesPerSecondToExport = 4,
                         LimitLeft = 360,
                         LimitTop = 80,
                         LimitBottom = 420,
                         LimitRight = 710,
-                        ChangeVal = GetChangeVal(file),
-                        CompareMode = GetCompareMode(file)
+                        ChangeVal = new ChangeDetection(250, 80),
+                        CompareMode = CompareMode.SuccessiveFrames,
+                        IsDebugMode = false
                     });
             }
 
@@ -75,23 +79,6 @@ namespace VideoToFrames
             }
 
             return videos;
-        }
-
-        private static CompareMode GetCompareMode(string file)
-        {
-            var compareMode = CompareMode.PreviousEmptyFrame;
-            return compareMode;            
-        }
-
-        private static int GetChangeVal(string file)
-        {
-            int changeVal = 250;
-
-            //// Particular cases : To many false positive
-            //if (file.Contains("Standard_SCU5N2_2016-04-19_0500.011"))
-            //    changeVal = 350;
-
-            return changeVal;
         }
 
         private static DateTime GetStartDateTimeFromFileName(string filename)

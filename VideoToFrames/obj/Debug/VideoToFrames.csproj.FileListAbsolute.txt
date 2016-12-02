@@ -48,6 +48,6 @@ C:\Users\gry\Documents\GitHub\opencv-emgu-tests\VideoToFrames\bin\Debug\Emgu.CV.
 C:\Users\gry\Documents\GitHub\opencv-emgu-tests\VideoToFrames\bin\Debug\Emgu.CV.World.xml
 C:\Users\gry\Documents\GitHub\opencv-emgu-tests\VideoToFrames\bin\Debug\AForge.Video.xml
 C:\Users\gry\Documents\GitHub\opencv-emgu-tests\VideoToFrames\bin\Debug\AForge.xml
+C:\Users\gry\Documents\GitHub\opencv-emgu-tests\VideoToFrames\obj\Debug\VideoToFrames.csprojResolveAssemblyReference.cache
 C:\Users\gry\Documents\GitHub\opencv-emgu-tests\VideoToFrames\obj\Debug\VideoToFrames.exe
 C:\Users\gry\Documents\GitHub\opencv-emgu-tests\VideoToFrames\obj\Debug\VideoToFrames.pdb
-C:\Users\gry\Documents\GitHub\opencv-emgu-tests\VideoToFrames\obj\Debug\VideoToFrames.csprojResolveAssemblyReference.cache
