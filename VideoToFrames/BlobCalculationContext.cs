@@ -13,7 +13,7 @@ namespace VideoToFrames
             //NumberOfPixels = 0;
         }
 
-        public BlobCalculationContext(Image<Bgr, byte> frame, ChangeDetection changeVal) : this()
+        public BlobCalculationContext(Image<Bgr, byte> frame, ChangeContext changeVal) : this()
         {
             Frame = frame;
             ChangeVal = changeVal;
@@ -22,7 +22,7 @@ namespace VideoToFrames
 
         // Input
         public Image<Bgr, byte> Frame { get; set; }
-        public ChangeDetection ChangeVal { get; set; }
+        public ChangeContext ChangeVal { get; set; }
 
         // Calculation tool
         public bool[,] AlreadyTested { get; private set; }

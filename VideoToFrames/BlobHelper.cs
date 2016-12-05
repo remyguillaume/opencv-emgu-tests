@@ -9,17 +9,36 @@ namespace VideoToFrames
 {
     public static class BlobHelper
     {
-        public static void GetBlob(Point coordinate, Image<Bgr, byte> difference, ChangeDetection changeVal, out Rectangle rectangleBlob, out Polygon polygonBlob, out double changePercentage)
+        public static bool GetBlob(Point coordinate, Image<Bgr, byte> difference, ChangeContext changeVal, out Rectangle rectangleBlob, out Polygon polygonBlob, out int changeValue)
         {
             // We try to build the outline or the object
             // Method : Up, Right, Down, Left
+            rectangleBlob = new Rectangle();
+            polygonBlob = null;
+            changeValue = 0;
 
             var context = new BlobCalculationContext(difference, changeVal);
             GetBlobCoordinatesRecursive(coordinate.X, coordinate.Y, context, 1);
-            CoordinatesToBlobs(context.BlobCoordinates, out rectangleBlob, out polygonBlob);
+            if (!ValidateBlobCoordinates(context))
+                return false;
 
+            // Blob is valid
+            CoordinatesToBlobs(context.BlobCoordinates, out rectangleBlob, out polygonBlob);
             // Calculate change percentage
-            changePercentage = CalculateChangePercentage(rectangleBlob, context.NumberOfChanges);
+            changeValue = context.NumberOfChanges;
+            return true;
+        }
+
+        private static bool ValidateBlobCoordinates(BlobCalculationContext context)
+        {
+            bool valid = false;
+            foreach (var blobCoordinates in context.BlobCoordinates)
+            {
+                if (blobCoordinates.Value.Max.Value - blobCoordinates.Value.Min.Value > context.ChangeVal.MinimalHeightValue)
+                    valid = true;
+            }
+
+            return valid;
         }
 
         private static void GetBlobCoordinatesRecursive(int x, int y, BlobCalculationContext context, int callStackLevel)
@@ -104,13 +123,7 @@ namespace VideoToFrames
             rectangleBlob = new Rectangle(minX, minY, maxX - minX, maxY - minY);
         }
 
-        private static double CalculateChangePercentage(Rectangle rectangleBlob, int numberOfChanges)
-        {
-            var numberOfPixels = rectangleBlob.Width*rectangleBlob.Height;
-            return numberOfPixels == 0 ? 0 : numberOfChanges*100.0/numberOfPixels;
-        }
-
-        public static void MergeBlobs(Polygon polygon1, Polygon polygon2, out Rectangle rectangleBlob, out Polygon polygonBlob, out double changePercentage)
+        public static void MergeBlobs(Polygon polygon1, Polygon polygon2, out Rectangle rectangleBlob, out Polygon polygonBlob, out int numberOfChanges)
         {
             var context = new BlobCalculationContext();
 
@@ -126,8 +139,11 @@ namespace VideoToFrames
                 minAndMax.Set(coordinate.Y);
             }
 
+            numberOfChanges = 0;
+            foreach (MinAndMax mnm in context.BlobCoordinates.Values)
+                numberOfChanges += mnm.Max.Value - mnm.Min.Value + 1;
+
             CoordinatesToBlobs(context.BlobCoordinates, out rectangleBlob, out polygonBlob);
-            changePercentage = CalculateChangePercentage(rectangleBlob, context.NumberOfChanges);
         }
     }
 }

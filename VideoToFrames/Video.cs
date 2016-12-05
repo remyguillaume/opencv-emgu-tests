@@ -14,9 +14,8 @@ namespace VideoToFrames
             MinGridDistanceForObjectIdentification = 70;
             MaxGridDistanceForObjectSwitching = 30;
             RectangleUnionBuffer = 10;
-            ChangePercentageLimit = 30;
             CompareMode = CompareMode.SuccessiveFrames;
-        }☺
+        }
 
         public string VideoFilename { get; set; }
         public DateTime StartDate { get; set; }
@@ -25,11 +24,11 @@ namespace VideoToFrames
         /// If DebugMode is enabled, details analyse files will be generated (AbsDif pictures, Changes matrixes)
         /// </summary>
         public bool IsDebugMode { get; set; }
-        ☺
+
         /// <summary>
         /// Indicates the minimum Pixel Value necessary to consider a pixel as a change in the difference frame (AbsDiff)
         /// </summary>
-        public ChangeDetection ChangeVal { get; set; }
+        public ChangeContext ChangeContext { get; set; }
 
         /// <summary>
         /// When exporting video, number of frames to export per second
@@ -59,14 +58,9 @@ namespace VideoToFrames
         public int RectangleUnionBuffer { get; set; }
 
         /// <summary>
-        /// Change Percentage minimum when an object can be considered as a real object
-        /// </summary>
-        public int ChangePercentageLimit { get; set; }
-
-        /// <summary>
         /// If enabled, a directory will be created for each Change Percentage
         /// </summary>
-        public bool ExportInPercentageFolders { get; set; }
+        public bool Export⁬WithChangeValue { get; set; }
 
         // Those Properies definie the analyse area
         public int LimitLeft { get; set; }

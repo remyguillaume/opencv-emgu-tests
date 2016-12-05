@@ -11,8 +11,9 @@ namespace VideoToFrames
         private static void Main(string[] args)
         {
             // Example with 12 velo
-            List<Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Velo", "Standard_SCU5N2_2016-04-20_0500.011.mp4");
-            //List <Video> videos = GetVideosList(@"J:\Videos_UR\");
+            //List<Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-19_0500", "Standard_SCU5N2_2016-04-19_0500.011.mp4");
+            List<Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-20_0500", "Standard_SCU5N2_2016-04-20_0500.011.mp4");
+            //List <Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Aufnahmen vom 19. - 25.04.2016");
             //List<Video> videos = GetVideosList(@"J:\Videos_UR\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-19_0500", "Standard_SCU5N2_2016-04-19_0500.011.mp4");
 
             foreach (Video video in videos)
@@ -66,9 +67,10 @@ namespace VideoToFrames
                         LimitTop = 80,
                         LimitBottom = 420,
                         LimitRight = 710,
-                        ChangeVal = new ChangeDetection(250, 80),
+                        ChangeContext = new ChangeContext(250, 90, 2000, 30, 30),
                         CompareMode = CompareMode.SuccessiveFrames,
-                        IsDebugMode = false
+                        IsDebugMode = false,
+                        Export⁬WithChangeValue = true
                     });
             }
 

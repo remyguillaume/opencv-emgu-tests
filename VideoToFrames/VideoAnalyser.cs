@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -129,7 +129,7 @@ namespace VideoToFrames
                         Logger.WriteLine();
                         Logger.Write("==> MAXFILE:" + maxFrame.File.Name);
                         // TODO GRY : Remove this
-                        var path = Path.Combine(video.ResultsDirectory, ((int)maxFrame.ChangePercentage).ToString());
+                        var path = Path.Combine(video.ResultsDirectory, maxFrame.ChangeValue.ToString());
                         if (!Directory.Exists(path))
                             Directory.CreateDirectory(path);
                         // END TODO GRY
@@ -241,12 +241,13 @@ namespace VideoToFrames
                             Logger.WriteLine();
                             Logger.Write("==> MAXFILE:" + maxFrame.File.Name);
                             string destFileName;
-                            if (video.ExportInPercentageFolders)
+                            if (video.Export⁬WithChangeValue)
                             {
-                                var path = Path.Combine(video.ResultsDirectory, ((int) maxFrame.ChangePercentage).ToString());
+                                /*var path = Path.Combine(video.ResultsDirectory, maxFrame.ChangeValue.ToString());
                                 if (!Directory.Exists(path))
-                                    Directory.CreateDirectory(path);
-                                destFileName = Path.Combine(path, maxFrame.File.Name);
+                                    Directory.CreateDirectory(path);*/
+                                string filename = $"{maxFrame.ChangeValue.ToString("000000")} - {maxFrame.File.Name}";
+                                destFileName = Path.Combine(video.ResultsDirectory, filename);
                             }
                             else
                             {
@@ -256,7 +257,7 @@ namespace VideoToFrames
                             maxFrame.Frame.Save(destFileName);
                             resultCount++;
                         }
-
+                        
                         maxFrame = new FrameInfos();
                         successiveFound = 0;
 
@@ -292,7 +293,7 @@ namespace VideoToFrames
             Image<Bgr, byte> frameWithRectangles = null;
             foreach (var videoPart in videoParts)
             {
-                Logger.Write(String.Format(" [Size:{0}/{1}/{2}%]", videoPart.Rectangle.Width.ToString("000"), videoPart.Rectangle.Height.ToString("000"), videoPart.ChangePercentage.ToString("00")));
+                Logger.Write(String.Format(" [Size:{0}/{1}/{2}%]", videoPart.Rectangle.Width.ToString("000"), videoPart.Rectangle.Height.ToString("000"), videoPart.ChangeValue.ToString("0000")));
 
                 if (IsDetected(video, previousFound, videoPart))
                 {
@@ -314,7 +315,7 @@ namespace VideoToFrames
                         max.Area = area;
                         max.Frame = frameWithRectangles;
                         max.File = currentFrame.File;
-                        max.ChangePercentage = videoPart.ChangePercentage;
+                        max.ChangeValue = videoPart.ChangeValue;
                     }
                 }
             }
@@ -337,7 +338,7 @@ namespace VideoToFrames
             bool heightSwitch = videoPart.Rectangle.Height > video.MaxGridDistanceForObjectSwitching;
             bool widthBig = videoPart.Rectangle.Width > video.MinGridDistanceForBigObjects;
             bool heightBig = videoPart.Rectangle.Height > video.MinGridDistanceForBigObjects;
-            bool isChange = videoPart.ChangePercentage > video.ChangePercentageLimit;
+            bool isChange = videoPart.ChangeValue > video.ChangeContext.ChangeLimit;
 
             bool isBigObject = widthBig || heightBig;
             bool isObject = (widthIdentify || heightIdentify) && isChange;

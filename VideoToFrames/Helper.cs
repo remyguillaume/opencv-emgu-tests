@@ -19,7 +19,7 @@ namespace VideoToFrames
             video.FramesDirectory = Path.Combine(outputDirectory, $"Frames ({video.NbFramesPerSecondToExport})");
             video.AbsDiffDirectory = Path.Combine(outputDirectory, $"AbsDiff ({video.NbFramesPerSecondToExport})");
 
-            string resultsBaseDirectory = Path.Combine(outputDirectory, $"Results ({video.NbFramesPerSecondToExport}-{(int)video.CompareMode}-{video.ChangeVal.IdentificationChangeValue}-{video.ChangeVal.ShapeChangeValue}-{Consts.GridPatternFactor}-{video.MinGridDistanceForObjectIdentification}-{video.MaxGridDistanceForObjectSwitching}-{video.RectangleUnionBuffer}-{video.ChangePercentageLimit})");
+            string resultsBaseDirectory = Path.Combine(outputDirectory, $"Results ({video.NbFramesPerSecondToExport}-{(int)video.CompareMode}-[{video.ChangeContext}]-{Consts.GridPatternFactor}-{video.MinGridDistanceForObjectIdentification}-{video.MaxGridDistanceForObjectSwitching}-{video.RectangleUnionBuffer})");
             video.ResultsDirectory = Path.Combine(resultsBaseDirectory, "OK");
             video.AllDetectedFramesDirectory = Path.Combine(resultsBaseDirectory, "AllDetected");
             video.Logfile = Path.Combine(resultsBaseDirectory, "results.log");
@@ -111,11 +111,11 @@ namespace VideoToFrames
                     {
                         Rectangle rectangleBlog;
                         Polygon polygonlob;
-                        double changePercentage;
-                        BlobHelper.MergeBlobs(simplifiedParts[j].Polygon, videoParts[i].Polygon, out rectangleBlog, out polygonlob, out changePercentage);
+                        int changeValue;
+                        BlobHelper.MergeBlobs(simplifiedParts[j].Polygon, videoParts[i].Polygon, out rectangleBlog, out polygonlob, out changeValue);
                         simplifiedParts[j].Rectangle = rectangleBlog;
                         simplifiedParts[j].Polygon = polygonlob;
-                        simplifiedParts[j].ChangePercentage = changePercentage;
+                        simplifiedParts[j].ChangeValue = changeValue;
 
                         merged = true;
                     }
@@ -149,7 +149,7 @@ namespace VideoToFrames
                 maxY = y;
         }
 
-        public static List<Point> IdentifyBigChangesCoordinates(Image<Bgr, byte> difference, Rectangle analyseArea, ChangeDetection changeVal)
+        public static List<Point> IdentifyBigChangesCoordinates(Image<Bgr, byte> difference, Rectangle analyseArea, ChangeContext changeVal)
         {
             var changesCoordinates = new List<Point>();
             for (int i = analyseArea.Top; i < analyseArea.Bottom; i += Consts.GridPatternFactor)
@@ -183,7 +183,7 @@ namespace VideoToFrames
 
             // Go through every 10 pixels, and test if there is a big change.
             // Remember the coordinates if a change is found
-            List<Point> changesCoordinates = IdentifyBigChangesCoordinates(difference, video.AnalyseArea, video.ChangeVal);
+            List<Point> changesCoordinates = IdentifyBigChangesCoordinates(difference, video.AnalyseArea, video.ChangeContext);
             Logger.Write(currentFrame.File.Name);
             Logger.Write(" [ChangeCoords:" + changesCoordinates.Count.ToString("0000") + "]");
 
@@ -202,15 +202,16 @@ namespace VideoToFrames
                 // For each coordinate, we try to build the blob of changes
                 Rectangle rectangleBlob;
                 Polygon polygonBlob;
-                double changePercentage;
-                BlobHelper.GetBlob(coordinate, difference, video.ChangeVal, out rectangleBlob, out polygonBlob, out changePercentage);
-                var newVideoPart = new VideoPart {Rectangle = rectangleBlob, ChangePercentage = changePercentage};
-                newVideoPart.Polygon = polygonBlob;
-                videoParts.Add(newVideoPart);
+                int changeValue;
+                if (BlobHelper.GetBlob(coordinate, difference, video.ChangeContext, out rectangleBlob, out polygonBlob, out changeValue))
+                {
+                    var newVideoPart = new VideoPart {Rectangle = rectangleBlob, ChangeValue = changeValue};
+                    newVideoPart.Polygon = polygonBlob;
+                    videoParts.Add(newVideoPart);
 
-
-                UpdateXyLimits(rectangleBlob.X, rectangleBlob.Y, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
-                UpdateXyLimits(rectangleBlob.X + rectangleBlob.Width, rectangleBlob.Y + rectangleBlob.Height, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
+                    UpdateXyLimits(rectangleBlob.X, rectangleBlob.Y, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
+                    UpdateXyLimits(rectangleBlob.X + rectangleBlob.Width, rectangleBlob.Y + rectangleBlob.Height, ref minMinX, ref minMinY, ref maxMaxX, ref maxMaxY);
+                }
             }
             return videoParts;
         }

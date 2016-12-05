@@ -15,7 +15,7 @@ namespace VideoToFrames
         public int Area { get; set; }
         public Image<Bgr, byte> Frame { get; set; }
         public FileInfo File { get; set; }
-        public double ChangePercentage { get; set; }
+        public int ChangeValue { get; set; }
 
         public override string ToString()
         {

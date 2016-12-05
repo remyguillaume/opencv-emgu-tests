@@ -57,7 +57,7 @@
   <ItemGroup>
     <Compile Include="BlobCalculationContext.cs" />
     <Compile Include="BlobHelper.cs" />
-    <Compile Include="ChangeDetection.cs" />
+    <Compile Include="ChangeContext.cs" />
     <Compile Include="CompareMode.cs" />
     <Compile Include="Consts.cs" />
     <Compile Include="Helper.cs" />
