@@ -2,7 +2,7 @@ using System.IO;
 using Emgu.CV;
 using Emgu.CV.Structure;
 
-namespace VideoToFrames
+namespace VideoToFrames.Analyse
 {
     public class FrameInfos
     {

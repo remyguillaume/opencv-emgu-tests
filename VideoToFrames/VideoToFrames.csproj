@@ -55,19 +55,21 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlobCalculationContext.cs" />
-    <Compile Include="BlobHelper.cs" />
-    <Compile Include="ChangeContext.cs" />
-    <Compile Include="CompareMode.cs" />
-    <Compile Include="Consts.cs" />
-    <Compile Include="Helper.cs" />
-    <Compile Include="Logger.cs" />
-    <Compile Include="FrameInfos.cs" />
+    <Compile Include="Tools\BlobCalculationContext.cs" />
+    <Compile Include="Basis\MinAndMax.cs" />
+    <Compile Include="Tools\BlobHelper.cs" />
+    <Compile Include="Tools\ChangeContext.cs" />
+    <Compile Include="Tools\CompareMode.cs" />
+    <Compile Include="Basis\Consts.cs" />
+    <Compile Include="Basis\Direction.cs" />
+    <Compile Include="Tools\Helper.cs" />
+    <Compile Include="Tools\Logger.cs" />
+    <Compile Include="Analyse\FrameInfos.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Video.cs" />
-    <Compile Include="VideoAnalyser.cs" />
-    <Compile Include="VideoPart.cs" />
+    <Compile Include="Analyse\Video.cs" />
+    <Compile Include="Analyse\VideoAnalyser.cs" />
+    <Compile Include="Analyse\VideoPart.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

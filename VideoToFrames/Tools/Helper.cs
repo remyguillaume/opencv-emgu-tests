@@ -7,8 +7,10 @@ using System.Linq;
 using System.Text;
 using Emgu.CV;
 using Emgu.CV.Structure;
+using VideoToFrames.Analyse;
+using VideoToFrames.Basis;
 
-namespace VideoToFrames
+namespace VideoToFrames.Tools
 {
     public class Helper
     {
@@ -60,31 +62,34 @@ namespace VideoToFrames
             {
                 // Save AbsDiff
                 string destFileName = Path.Combine(outDirectory, currentFrame.File.Name);
-                difference.Save(destFileName);
-
-                // Save AbsDiff as text values
-                var str = new StringBuilder("\t");
-                for (int j = 0; j < difference.Width; ++j)
-                    str.Append(j).Append("\t");
-                str.AppendLine();
-
-                for (int i = 0; i < difference.Height; i += 1)
+                if (!File.Exists(destFileName))
                 {
-                    str.Append(i).Append("\t");
-                    for (int j = 0; j < difference.Width; j += 1)
-                    {
-                        var cell = difference[i, j];
-                        var cellValue = cell.Blue + cell.Green + cell.Red;
-                        str.Append(cellValue).Append("\t");
-                    }
+                    difference.Save(destFileName);
+
+                    // Save AbsDiff as text values
+                    var str = new StringBuilder("\t");
+                    for (int j = 0; j < difference.Width; ++j)
+                        str.Append(j).Append("\t");
                     str.AppendLine();
-                }
-                var fileName = Path.GetFileNameWithoutExtension(currentFrame.File.Name) + ".txt";
-                destFileName = Path.Combine(outDirectory, fileName);
-                using (var sw = new StreamWriter(destFileName))
-                {
-                    sw.Write(str.ToString());
-                    sw.Close();
+
+                    for (int i = 0; i < difference.Height; i += 1)
+                    {
+                        str.Append(i).Append("\t");
+                        for (int j = 0; j < difference.Width; j += 1)
+                        {
+                            var cell = difference[i, j];
+                            var cellValue = cell.Blue + cell.Green + cell.Red;
+                            str.Append(cellValue).Append("\t");
+                        }
+                        str.AppendLine();
+                    }
+                    var fileName = Path.GetFileNameWithoutExtension(currentFrame.File.Name) + ".txt";
+                    destFileName = Path.Combine(outDirectory, fileName);
+                    using (var sw = new StreamWriter(destFileName))
+                    {
+                        sw.Write(str.ToString());
+                        sw.Close();
+                    }
                 }
             }
 

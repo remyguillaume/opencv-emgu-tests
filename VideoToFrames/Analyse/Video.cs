@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Drawing;
+using VideoToFrames.Tools;
 
-namespace VideoToFrames
+namespace VideoToFrames.Analyse
 {
     public class Video
     {

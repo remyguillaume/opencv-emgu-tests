@@ -1,4 +1,4 @@
-﻿namespace VideoToFrames
+﻿namespace VideoToFrames.Tools
 {
     public class ChangeContext
     {

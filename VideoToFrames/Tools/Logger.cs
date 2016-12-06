@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 
-namespace VideoToFrames
+namespace VideoToFrames.Tools
 {
     internal static class Logger
     {

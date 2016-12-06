@@ -1,4 +1,4 @@
-﻿namespace VideoToFrames
+﻿namespace VideoToFrames.Basis
 {
     public class Consts
     {

@@ -4,8 +4,10 @@ using System.Drawing;
 using System.Linq;
 using Emgu.CV;
 using Emgu.CV.Structure;
+using VideoToFrames.Analyse;
+using VideoToFrames.Basis;
 
-namespace VideoToFrames
+namespace VideoToFrames.Tools
 {
     public static class BlobHelper
     {

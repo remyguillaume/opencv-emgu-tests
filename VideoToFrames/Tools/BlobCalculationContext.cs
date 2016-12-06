@@ -1,8 +1,9 @@
 ﻿using System.Collections.Generic;
 using Emgu.CV;
 using Emgu.CV.Structure;
+using VideoToFrames.Basis;
 
-namespace VideoToFrames
+namespace VideoToFrames.Tools
 {
     public class BlobCalculationContext
     {
@@ -31,32 +32,5 @@ namespace VideoToFrames
         public Dictionary<int, MinAndMax> BlobCoordinates { get; private set; }
         public int NumberOfChanges { get; set; }
         //public int NumberOfPixels { get; set; }
-    }
-
-    public class MinAndMax
-    {
-        public int? Max;
-        public int? Min;
-
-        public bool AreMinAndMaxEqual
-        {
-            get { return Max.Value == Min.Value; }
-        }
-
-        public void Set(int y)
-        {
-            if (!Min.HasValue)
-            {
-                Min = y;
-                Max = y;
-            }
-            else
-            {
-                if (y <= Min.Value)
-                    Min = y;
-                else
-                    Max = y;
-            }
-        }
     }
 }

@@ -9,8 +9,10 @@ using AForge.Video.FFMPEG;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
+using VideoToFrames.Basis;
+using VideoToFrames.Tools;
 
-namespace VideoToFrames
+namespace VideoToFrames.Analyse
 {
     public class VideoAnalyser
     {
@@ -78,86 +80,86 @@ namespace VideoToFrames
             }
         }
         
+        //public int FindBlobs(Video video)
+        //{
+        //    List<FileInfo> files = new DirectoryInfo(video.FramesDirectory).GetFiles("*.jpg").OrderBy(f => f.FullName).ToList();
+        //    var maxFrame = new FrameInfos();
+        //    var previousFrame = new FrameInfos {Number = 0, Frame = new Image<Bgr, byte>(files[0].FullName), File = files[0]};
+        //    var previousEmptyFrame = new FrameInfos { Number = 0, Frame = new Image<Bgr, byte>(files[0].FullName), File = files[0] };
+        //    int resultCount = 0;
+        //    int successiveFound = 0;
+        //    bool previousFound = false;
+        //    for (int index = 1; index < files.Count; index++)
+        //    {
+        //        var currentFrame = new FrameInfos { Number = index, Frame = new Image<Bgr, byte>(files[index].FullName), File = files[index] };
+
+        //        // Get differences
+        //        bool found = false;
+        //        var videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousFrame);
+        //        if (videoParts.Count > 0)
+        //        {
+        //            found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
+
+        //            if (found && video.CompareMode == CompareMode.SuccessiveFrames)
+        //            {
+        //                // We detect changes using previous and current frames
+        //                // But in order to get the change areas, we use the previous empty frame
+        //                Logger.WriteLine();
+        //                Logger.WriteLine(String.Format("Comparing with PreviousEmptyFrame {0}", previousEmptyFrame.Number));
+        //                videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousEmptyFrame);
+        //                if (videoParts.Any())
+        //                    found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
+        //                else
+        //                    found = false;
+        //                Logger.Write("CompareMode.PreviousEmptyFrame : Done.");
+        //            }
+        //        }
+
+        //        if (found)
+        //        {
+        //            // Something was found
+        //            // If the are not minimum 2 consecituve frames with whanges, we consider it as "no-change" at all
+        //            successiveFound++;
+        //        }
+        //        else
+        //        {
+        //            // No change found in this frame.
+        //            // It means we switch vehicle.
+        //            // We can save maxFrame as a definitive result
+        //            if (successiveFound > 1 && maxFrame.Frame != null)
+        //            {
+        //                Logger.WriteLine();
+        //                Logger.Write("==> MAXFILE:" + maxFrame.File.Name);
+        //                // TODO GRY : Remove this
+        //                var path = Path.Combine(video.ResultsDirectory, maxFrame.ChangeValue.ToString());
+        //                if (!Directory.Exists(path))
+        //                    Directory.CreateDirectory(path);
+        //                // END TODO GRY
+        //                string destFileName = Path.Combine(path/*video.ResultsDirectory*/, maxFrame.File.Name);
+        //                maxFrame.Frame.Save(destFileName);
+        //                resultCount++;
+        //            }
+
+        //            maxFrame = new FrameInfos();
+        //            successiveFound = 0;
+
+        //            // If comparing with previous empty frame, we set the previous frame here
+        //            if (video.CompareMode == CompareMode.PreviousEmptyFrame)
+        //                previousEmptyFrame = currentFrame;
+        //        }
+
+        //        previousFound = found;
+        //        Logger.WriteLine();
+
+        //        // If comparing successive frames, we set the previous frame here
+        //        if (video.CompareMode == CompareMode.SuccessiveFrames || video.CompareMode == CompareMode.PreviousEmptyFrame)
+        //            previousFrame = currentFrame;
+        //    }
+
+        //    return resultCount;
+        //}
+
         public int FindBlobs(Video video)
-        {
-            List<FileInfo> files = new DirectoryInfo(video.FramesDirectory).GetFiles("*.jpg").OrderBy(f => f.FullName).ToList();
-            var maxFrame = new FrameInfos();
-            var previousFrame = new FrameInfos {Number = 0, Frame = new Image<Bgr, byte>(files[0].FullName), File = files[0]};
-            var previousEmptyFrame = new FrameInfos { Number = 0, Frame = new Image<Bgr, byte>(files[0].FullName), File = files[0] };
-            int resultCount = 0;
-            int successiveFound = 0;
-            bool previousFound = false;
-            for (int index = 1; index < files.Count; index++)
-            {
-                var currentFrame = new FrameInfos { Number = index, Frame = new Image<Bgr, byte>(files[index].FullName), File = files[index] };
-
-                // Get differences
-                bool found = false;
-                var videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousFrame);
-                if (videoParts.Count > 0)
-                {
-                    found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
-
-                    if (found && video.CompareMode == CompareMode.SuccessiveFrames)
-                    {
-                        // We detect changes using previous and current frames
-                        // But in order to get the change areas, we use the previous empty frame
-                        Logger.WriteLine();
-                        Logger.WriteLine(String.Format("Comparing with PreviousEmptyFrame {0}", previousEmptyFrame.Number));
-                        videoParts = Helper.GetDifferenceVideoParts(video, currentFrame, previousEmptyFrame);
-                        if (videoParts.Any())
-                            found = GetMaxFrameInfos(video, videoParts, previousFound, currentFrame, maxFrame);
-                        else
-                            found = false;
-                        Logger.Write("CompareMode.PreviousEmptyFrame : Done.");
-                    }
-                }
-
-                if (found)
-                {
-                    // Something was found
-                    // If the are not minimum 2 consecituve frames with whanges, we consider it as "no-change" at all
-                    successiveFound++;
-                }
-                else
-                {
-                    // No change found in this frame.
-                    // It means we switch vehicle.
-                    // We can save maxFrame as a definitive result
-                    if (successiveFound > 1 && maxFrame.Frame != null)
-                    {
-                        Logger.WriteLine();
-                        Logger.Write("==> MAXFILE:" + maxFrame.File.Name);
-                        // TODO GRY : Remove this
-                        var path = Path.Combine(video.ResultsDirectory, maxFrame.ChangeValue.ToString());
-                        if (!Directory.Exists(path))
-                            Directory.CreateDirectory(path);
-                        // END TODO GRY
-                        string destFileName = Path.Combine(path/*video.ResultsDirectory*/, maxFrame.File.Name);
-                        maxFrame.Frame.Save(destFileName);
-                        resultCount++;
-                    }
-
-                    maxFrame = new FrameInfos();
-                    successiveFound = 0;
-
-                    // If comparing with previous empty frame, we set the previous frame here
-                    if (video.CompareMode == CompareMode.PreviousEmptyFrame)
-                        previousEmptyFrame = currentFrame;
-                }
-
-                previousFound = found;
-                Logger.WriteLine();
-
-                // If comparing successive frames, we set the previous frame here
-                if (video.CompareMode == CompareMode.SuccessiveFrames || video.CompareMode == CompareMode.PreviousEmptyFrame)
-                    previousFrame = currentFrame;
-            }
-
-            return resultCount;
-        }
-
-        public int FindBlobsWithoutExtraction(Video video)
         {
             var reader = new VideoFileReader();
             reader.Open(video.VideoFilename);
@@ -183,6 +185,11 @@ namespace VideoToFrames
                 int resultCount = 0;
                 int successiveFound = 0;
                 bool previousFound = false;
+                int prevX = -1;
+                var directionCounter = new Dictionary<Direction, int>();
+                directionCounter[Direction.B] = 0;
+                directionCounter[Direction.T] = 0;
+
                 for (int i = 1; i < reader.FrameCount; ++i)
                 {
                     FrameInfos currentFrame;
@@ -228,6 +235,21 @@ namespace VideoToFrames
                     if (found)
                     {
                         // Something was found
+                        if (successiveFound == 0)
+                        {
+                            prevX = videoParts.First(p => p.ChangeValue == videoParts.Max(v => v.ChangeValue)).Rectangle.X;
+                        }
+                        else
+                        {
+                            var x = videoParts.First(p => p.ChangeValue == videoParts.Max(v => v.ChangeValue)).Rectangle.X;
+                            if (x - prevX > 0)
+                                directionCounter[Direction.T]++;
+                            else
+                                directionCounter[Direction.B]++;
+
+                            prevX = x;
+                        }
+
                         // If the are not minimum 2 consecutive frames with whanges, we consider it as "no-change" at all
                         successiveFound++;
                     }
@@ -246,7 +268,10 @@ namespace VideoToFrames
                                 /*var path = Path.Combine(video.ResultsDirectory, maxFrame.ChangeValue.ToString());
                                 if (!Directory.Exists(path))
                                     Directory.CreateDirectory(path);*/
-                                string filename = $"{maxFrame.ChangeValue.ToString("000000")} - {maxFrame.File.Name}";
+                                if (prevX < 0)
+                                    throw new NotSupportedException();
+                                string direction = (directionCounter[Direction.B] > directionCounter[Direction.T]) ? "B" : "T";
+                                string filename = $"{direction}-{maxFrame.ChangeValue.ToString("000000")} - {maxFrame.File.Name}";
                                 destFileName = Path.Combine(video.ResultsDirectory, filename);
                             }
                             else
@@ -260,7 +285,9 @@ namespace VideoToFrames
                         
                         maxFrame = new FrameInfos();
                         successiveFound = 0;
-
+                        directionCounter[Direction.B] = 0;
+                        directionCounter[Direction.T] = 0;
+                        prevX = -1;
                         // We set the previous empty frame here
                         previousEmptyFrame = currentFrame;
                     }

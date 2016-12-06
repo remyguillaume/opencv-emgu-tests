@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using VideoToFrames.Analyse;
+using VideoToFrames.Tools;
 
 namespace VideoToFrames
 {
@@ -12,7 +14,7 @@ namespace VideoToFrames
         {
             // Example with 12 velo
             //List<Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-19_0500", "Standard_SCU5N2_2016-04-19_0500.011.mp4");
-            List<Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-20_0500", "Standard_SCU5N2_2016-04-20_0500.011.mp4");
+            List<Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Velo", "Standard_SCU5N2_2016-04-20_0500.011.mp4");
             //List <Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Aufnahmen vom 19. - 25.04.2016");
             //List<Video> videos = GetVideosList(@"J:\Videos_UR\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-19_0500", "Standard_SCU5N2_2016-04-19_0500.011.mp4");
 
@@ -28,12 +30,9 @@ namespace VideoToFrames
                     if (video.IsDebugMode)
                     {
                         Extract(tool, video);
-                        executed = IdentifyVehicles(tool, video);
                     }
-                    else
-                    {
-                        executed = IdentifyVehiclesWithoutExtraction(tool, video);
-                    }
+
+                    executed = IdentifyVehicles(tool, video);
                 }
                 catch
                 {
@@ -69,7 +68,7 @@ namespace VideoToFrames
                         LimitRight = 710,
                         ChangeContext = new ChangeContext(250, 90, 2000, 30, 30),
                         CompareMode = CompareMode.SuccessiveFrames,
-                        IsDebugMode = false,
+                        IsDebugMode = true,
                         Export⁬WithChangeValue = true
                     });
             }
@@ -140,32 +139,6 @@ namespace VideoToFrames
             video.AnalyseArea = Helper.GetAnalyseArea(video);
 
             int nbResults = tool.FindBlobs(video);
-            stopwatch.Stop();
-            Logger.WriteLine();
-            Logger.WriteLine("Identification executed in " + stopwatch.Elapsed.ToString("c"));
-            Logger.WriteLine("Number of vehicle found : " + nbResults);
-
-            return true;
-        }
-
-        private static bool IdentifyVehiclesWithoutExtraction(VideoAnalyser tool, Video video)
-        {
-            if (Directory.GetFiles(video.ResultsDirectory).Any())
-            {
-                // Analyse was already made for this configuration.
-                // Nothing to do
-                Logger.WriteLine("Skipping analyse (already executed for this configuration)");
-                return false;
-            }
-
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            // If there are perturbations (other route which should not be detected)
-            // We will analyse only the right area
-            video.AnalyseArea = Helper.GetAnalyseArea(video);
-
-            int nbResults = tool.FindBlobsWithoutExtraction(video);
             stopwatch.Stop();
             Logger.WriteLine();
             Logger.WriteLine("Identification executed in " + stopwatch.Elapsed.ToString("c"));

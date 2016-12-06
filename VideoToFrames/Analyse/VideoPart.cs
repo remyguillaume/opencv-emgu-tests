@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace VideoToFrames
+namespace VideoToFrames.Analyse
 {
     public class VideoPart
     {
