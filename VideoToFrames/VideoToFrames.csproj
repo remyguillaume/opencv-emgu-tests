@@ -70,6 +70,7 @@
     <Compile Include="Analyse\Video.cs" />
     <Compile Include="Analyse\VideoAnalyser.cs" />
     <Compile Include="Analyse\VideoPart.cs" />
+    <Compile Include="Tools\OutputHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

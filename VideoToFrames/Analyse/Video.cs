@@ -59,7 +59,7 @@ namespace VideoToFrames.Analyse
         public int RectangleUnionBuffer { get; set; }
 
         /// <summary>
-        /// If enabled, a directory will be created for each Change Percentage
+        /// If enabled, the changeValue will be added to the filename
         /// </summary>
         public bool Export⁬WithChangeValue { get; set; }
 
@@ -73,6 +73,8 @@ namespace VideoToFrames.Analyse
 
         // Those properties are output directories
         public string ResultsDirectory { get; set; }
+        public string ResultsDirectoryB { get; set; }
+        public string ResultsDirectoryT { get; set; }
         public string AbsDiffDirectory { get; set; }
         public string FramesDirectory { get; set; }
         public string AllDetectedFramesDirectory { get; set; }

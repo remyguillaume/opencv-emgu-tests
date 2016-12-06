@@ -25,5 +25,7 @@
                     Max = y;
             }
         }
+
+        public bool IsValid => Min.HasValue && Max.HasValue;
     }
 }
