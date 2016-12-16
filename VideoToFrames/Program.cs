@@ -15,7 +15,8 @@ namespace VideoToFrames
             // Example with 12 velo
             //List<Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-19_0500", "Standard_SCU5N2_2016-04-19_0500.011.mp4");
             //List<Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Velo", "Standard_SCU5N2_2016-04-20_0500.011.mp4");
-            List <Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Aufnahmen vom 19. - 25.04.2016");
+            List <Video> videos = GetVideosList(@"D:\Projects\VideoAnalyse\Aufnahmen vom 14. - 20.06.2016");
+            videos.AddRange(GetVideosList(@"D:\Projects\VideoAnalyse\Aufnahmen vom 17. -24.05.2016"));
             //List<Video> videos = GetVideosList(@"J:\Videos_UR\Aufnahmen vom 19. - 25.04.2016\Standard_SCU5N2_2016-04-19_0500", "Standard_SCU5N2_2016-04-19_0500.011.mp4");
 
             foreach (Video video in videos)
